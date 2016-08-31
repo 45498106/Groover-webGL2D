@@ -33,11 +33,19 @@ var spriteRender = (function(){
     var sw,sh,gl,spr;
     var shaders ={};
     var cs;
+    var w,h;
     var API = {
 
         shaders : shaders,
         currentShader : null,
+        canvasResized : function(webGL){
+            w = webGL.width;
+            h = webGL.height;
+            gl = webGL.gl;
+        },        
         setupWebGL : function(webGL){
+            w = webGL.width;
+            h = webGL.height;            
             gl = webGL.gl;
 
             

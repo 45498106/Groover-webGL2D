@@ -90,8 +90,10 @@ var webGLHelper = (function(){
         str.forEach(l => {
             if(l.substr(0,5) === "ERROR"){
                 glErrors.push({message : l,type : type,name : name});
-                if(log){
+                if(typeof log === "function"){
                     log(l.replace("ERROR:","Error in: " + name + " "))
+                }else{
+                    console.log(l.replace("ERROR:","Error in: " + name + " "));
                 }
                 error = true;
             }
@@ -212,7 +214,6 @@ var webGLHelper = (function(){
                 throw new SyntaxError("   '"+programName+"' Shader source code missing #type directive.");
             }
             var type = types.list.pop();
-            log(type)
             var ind;
             while((ind = SHADER_TYPE_NAMES.indexOf(type)) === -1 && types.list.length > 0){
                 type = types.list.pop();

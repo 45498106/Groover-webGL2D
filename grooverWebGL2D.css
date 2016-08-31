@@ -1,0 +1,38 @@
+body {
+    font-family: arial,sans-serif;
+}
+.ui {
+    position :absolute;
+    bottom : 40px;
+    width : 90%;
+    z-index : 200;
+    text-align : center;
+    left: 5%;
+    font-weight : 700;
+}
+.btn:hover {
+    
+    
+}
+.btn {
+    cursor : pointer;
+    text-align : center;
+    width : 120px;
+    padding-left: 10px;
+    padding-right: 10px;    
+}
+.Blue {
+    color : #00F;
+}
+.Light {
+    color : black;
+}
+.Dark {
+    color : white;
+}
+.Lines {
+    color : black;
+}
+.Green {
+    color : white;
+}

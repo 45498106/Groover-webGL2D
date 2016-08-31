@@ -3,6 +3,7 @@ var fullScreenRender = (function(){
     var shaders = {};
     var id = 0;
     var gl;
+    var w,h; // width and height of canvas
     var setBuffer= function (buffer, name, data, size){
         gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
         gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
@@ -11,7 +12,7 @@ var fullScreenRender = (function(){
     }       
 
     var cs;
-    var gridColours = new Float32Array([0.8,0.8,0.8,0.9,0.9,0.9,0,0,0,0.95,0.95,1]);
+    var gridColours = new Float32Array([0.8,0.8,0.8, 0.9,0.9,0.9, 0,0,0, 0.95,0.95,1, 1,1,0]);
     var setColours = function(data,offset){
         if(data !== undefined){
             gridColours.set(data,offset);
@@ -51,14 +52,20 @@ var fullScreenRender = (function(){
     var positionQuad = webGLHelper.createQuad(2,0.5);
     var origin = new Float32Array([0,0]);
     var scale = new Float32Array([1,1]);
-    var screen = new Float32Array([1/w,-1/h]);
-    var scaleC = 0;
-    var scaleR = 0;
-    var scaleV = 1;
+    var screen = new Float32Array([1/512,-1/512]);
     var API = {
         shaders : shaders,
         currentShader : null,
+        canvasResized : function(webGL){
+            w = webGL.width;
+            h = webGL.height;
+            gl = webGL.gl;
+            screen[0] = 1/w;
+            screen[1] = 1/h;            
+        },
         setupWebGL : function(webGL){
+            w = webGL.width;
+            h = webGL.height;
             gl = webGL.gl;
             cs = webGLHelper.createProgram(gl,"fillScreen");
             shaders[cs.name] = cs; 
@@ -92,13 +99,10 @@ var fullScreenRender = (function(){
             }
         },   
         draw : function(originX,originY,scaleXY){
-            origin[0] = -originX;//-w/2;
-            origin[1] = h-originY;//-h/2;
-
+            origin[0] = -originX;
+            origin[1] = h-originY;
             scale[0] = scaleXY;
             scale[1] = scaleXY;
-
-
             gl.uniform2fv(cs.origin, origin);
             gl.uniform2fv(cs.scale, scale);
             gl.drawArrays(gl.TRIANGLES, 0, 6);

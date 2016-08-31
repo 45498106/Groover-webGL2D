@@ -25,7 +25,7 @@
             varying vec2 u_texCoord;  
             void main() {
                 float a = 0.0;
-                float py = u_texCoord.y * sizeY + origin.y;     
+                float py = u_texCoord.y * sizeY - origin.y;     
                 float px = u_texCoord.x * sizeX + origin.x;
                 float every2 = step(1.0, mod(py, 2.0)) ;    
                 if(every2 > 0.5){
@@ -50,7 +50,7 @@
             varying vec2 tex;    
             void main() {
                 gl_Position = position;
-                tex = texCoord;
+                tex = vec2(1.0,-1.0) * texCoord;
             }
         `);}
 {webGLHelper.addShader("grid",`
@@ -61,7 +61,7 @@
             varying vec2 tex;  // incoming texture coords
 
             // input colours checker1,checker2,gridcolour,extra (checkerAlpha1,checkerAlpha2,lineAlpha)
-            #uniform vec3 colours[4];
+            #uniform vec3 colours[5];
             #uniform vec2 scale;   // scale
             #uniform vec2 origin;  // origin in pixels
             #uniform vec2 screen;  // inverse screen resolution
@@ -73,35 +73,128 @@
             vec4 checkerColour = vec4(colours[1],colours[3].y);
             vec4 gridColour = vec4(colours[2],colours[3].z);
             vec4 rCol;
-            float a = 1.0-(((startGridSize * scale.x)-4.0)/28.0);
             vec2 m = screen * startGridSize * scale;
-            vec2 ma = m * 0.5 ;
-            vec2 m1a = m * 4.0 ;
             vec2 m1  = m * 8.0 ;
-            vec2 m2a = m1 * 4.0 ;
             vec2 m2  = m1 * 8.0 ;
             vec2 pix;  // scaled translated origin.
             vec2 aa1;  // grid patterns 0-2;
             vec2 aa2;
             vec2 aa3;
             vec2 gl1;  // grid lines 0-2;
-            vec2 gl2;
-            vec2 gl3;
+
             float gridLine;
+            float lineWidth = colours[4].y;
+            float a;
+
+            
             void main(){
                 // get text offset to origin  
-                pix = tex +  origin * screen;
+                pix = tex+  origin * screen;
                 // find horizontal and vertical grid lines. 
-                gl1.x = (1.0 - step(screen.x, mod(pix.x, m1.x))) * (1.0 - a);
-                gl1.y = (1.0 - step(screen.y, mod(pix.y, m1.y))) * (1.0 - a);
-                gl1.x += (1.0 - step(screen.x, mod(pix.x, m2.x))) * a;
-                gl1.y += (1.0 - step(screen.y, mod(pix.y, m2.y))) * a;
+                if(colours[3].z <= 1.0){
+                    a = pow((((startGridSize * scale.x)-4.0)/28.0),colours[4].x);
+                    gl1.x = (1.0 - step(screen.x *  lineWidth, mod(pix.x, m1.x))) * a;
+                    gl1.y = (1.0 - step(screen.y *  lineWidth, mod(pix.y, m1.y))) * a;
+                    a = 1.0-a;
+                    gl1.x += (1.0 - step(screen.x * lineWidth, mod(pix.x, m2.x))) * a;
+                    gl1.y += (1.0 - step(screen.y * lineWidth, mod(pix.y, m2.y))) * a;
+                }else{                              
+                    a = pow((((startGridSize * scale.x)-4.0)/28.0),colours[4].x);
+                    gl1.x = (1.0 - step(screen.x *  lineWidth, mod(pix.x, m.x)));
+                    gl1.y = (1.0 - step(screen.y *  lineWidth, mod(pix.y, m.y)));
+                    gl1 *=  a * 0.5;
+                    gl1.x += (1.0 - step(screen.x * lineWidth, mod(pix.x, m1.x))) * (0.5 + 0.5 * a);
+                    gl1.y += (1.0 - step(screen.y * lineWidth, mod(pix.y, m1.y))) * (0.5 + 0.5 * a);
+                    a = 1.0-a;
+                    gl1.x += (1.0 - step(screen.x * lineWidth, mod(pix.x, m2.x))) * a;
+                    gl1.y += (1.0 - step(screen.y * lineWidth, mod(pix.y, m2.y))) * a;
+                    
+                }
                 gridLine = gl1.x + gl1.y;
 
                 // get grid pattern
-                aa1 = step(ma , mod(pix, m));
-                aa2 = step(m1a, mod(pix, m1));
-                aa3 = step(m2a, mod(pix, m2));
+                aa1 = step(m/2.0 , mod(pix, m));
+                aa2 = step(m1/2.0, mod(pix, m1));
+                aa3 = step(m2/2.0, mod(pix, m2));
+                // mix grid pattern
+                rCol = mix(
+                        checkerColour, 
+                        checkerColour1,
+                        abs(aa2.x - aa2.y) + mix(abs(aa1.x - aa1.y), abs(aa3.x - aa3.y), a)
+                );
+                // mix  in grid lines
+                gl_FragColor = mix(rCol, gridColour, gridLine);
+            }
+        
+        `);}
+{webGLHelper.addShader("grid1",`
+            #type vertex;      
+            #name grid1;
+            #attribute vec4 position; // base quad
+            #attribute vec2 texCoord;
+            varying vec2 tex;    
+            void main() {
+                gl_Position = position;
+                tex = vec2(1.0,-1.0) * texCoord;
+            }
+        `);}
+{webGLHelper.addShader("grid1",`
+            #type fragment;      
+            #name grid1;
+            precision mediump float;
+            #uniform sampler2D texture;  
+            varying vec2 tex;  // incoming texture coords
+
+            // input colours checker1,checker2,gridcolour,extra (checkerAlpha1,checkerAlpha2,lineAlpha)
+            #uniform vec3 colours[5];
+            #uniform vec2 scale;   // scale
+            #uniform vec2 origin;  // origin in pixels
+            #uniform vec2 screen;  // inverse screen resolution
+
+            float startGridSize = pow(8.0, floor(log(256.0 / scale.x) / log(8.0) - 1.0));
+            
+
+            vec4 checkerColour1 = vec4(colours[0],colours[3].x);
+            vec4 checkerColour = vec4(colours[1],colours[3].y);
+            vec4 gridColour = vec4(colours[2],colours[3].z);
+            vec4 rCol;
+            float a = pow(1.0-(((startGridSize * scale.x)-4.0)/28.0),colours[3].x);
+            vec2 m = screen * startGridSize * scale;
+            vec2 m1  = m * 8.0 ;
+            vec2 m2  = m1 * 8.0 ;
+            vec2 pix;  // scaled translated origin.
+            vec2 aa1;  // grid patterns 0-2;
+            vec2 aa2;
+            vec2 aa3;
+            vec2 gl1;  // grid lines 0-2;
+
+            float gridLine;
+
+            
+            void main(){
+                // get text offset to origin  
+                pix = tex+  origin * screen;
+                // find horizontal and vertical grid lines. 
+                if(colours[3].z <= 1.0){
+                    gl1.x = (1.0 - step(screen.x * colours[3].y, mod(pix.x, m1.x))) * (1.0 - a);
+                    gl1.y = (1.0 - step(screen.y * colours[3].y, mod(pix.y, m1.y))) * (1.0 - a);
+                    gl1.x += (1.0 - step(screen.x * colours[3].y, mod(pix.x, m2.x))) * a;
+                    gl1.y += (1.0 - step(screen.y * colours[3].y, mod(pix.y, m2.y))) * a;
+                }else{
+                    gl1.x = (1.0 - step(screen.x * colours[3].y, mod(pix.x, m.x))) * (1.0 - a);
+                    gl1.y = (1.0 - step(screen.y * colours[3].y, mod(pix.y, m.y))) * (1.0 - a);
+                    gl1.x += (1.0 - step(screen.x * colours[3].y, mod(pix.x, m1.x)));
+                    gl1.y += (1.0 - step(screen.y * colours[3].y, mod(pix.y, m1.y)));
+                    gl1.x += (1.0 - step(screen.x * colours[3].y, mod(pix.x, m2.x))) * a;
+                    gl1.y += (1.0 - step(screen.y * colours[3].y, mod(pix.y, m2.y))) * a;
+                    
+               // }
+                gridLine = gl1.x + gl1.y;
+
+                // get grid pattern
+                aa1 = step(m/2.0 , mod(pix, m));
+                aa2 = step(m1/2.0, mod(pix, m1));
+                aa3 = step(m2/2.0, mod(pix, m2));
                 // mix grid pattern
                 rCol = mix(
                         checkerColour, 

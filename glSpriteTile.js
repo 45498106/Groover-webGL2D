@@ -1,5 +1,5 @@
 var spriteTile = (function(){
-function loadMapTiles(tileInfo){
+
     var API = {
         loadMapTiles : function(tileInfo){
             var loadMap = function(){
