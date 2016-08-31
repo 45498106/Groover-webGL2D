@@ -94,10 +94,10 @@ function renderer(){
     lastMy = mouse.y;
     var gridStep = Math.floor(Math.log(256.0 / scale.real) / Math.log(8.0) - 1.0);
     var startGridSize = Math.pow(8.0,gridStep);
-
+ctx.clearRect(0,0,w,h);
     //var a = 1.0-(((startGridSize * scale.x)-4.0)/28.0);
     var  m = (8) * startGridSize * scale.real;    
-    ctx.clearRect(0,h-40,w,40);
+   // ctx.clearRect(0,h-40,w,40);
     ctx.font = "16px arial";    
     ctx.lineWidth = 2;
     ctx.fillStyle = ctx.strokeStyle = UIColour;
@@ -110,22 +110,31 @@ function renderer(){
     ctx.lineTo(w * 0.5 + m, h-15);     
     ctx.stroke();    
     var dis = 16  * Math.pow(8.0,gridStep);;
-    ctx.fillText(dis.toFixed(2) + " pix",w * 0.5,h-25);
+    if(gridStep < 0){
+        dis = dis.toFixed(-gridStep);
+    }else{
+        dis = dis.toFixed(0);
+    }
+    ctx.fillText(dis+ " Pix",w * 0.5,h-25);
+    //fullScreenRender.shaders.grid.setCheckerColor(0,[Math.random(),Math.random(),Math.random()]);
+    //fullScreenRender.shaders.grid.setCheckerColor(1,[Math.random(),Math.random(),Math.random()]);
+    //fullScreenRender.shaders.grid.setLineColor([Math.random(),Math.random(),Math.random()]);
+   // fullScreenRender.shaders.grid.setLineWidth(Math.random()*5);
+    //fullScreenRender.shaders.grid.setCheckerAlpha(null,Math.random());
+  
     
-    
-    
-   /* ctx.clearRect(0,0,w,h);
+   // ctx.clearRect(0,0,w,h);
     ctx.lineWidth = 3;
     ctx.strokeStyle = "red";
     ctx.beginPath();
-    ctx.moveTo(originX,-10000);
-    ctx.lineTo(originX,10000);
-    ctx.moveTo(-10000,originY);
-    ctx.lineTo(10000,originY);
+    ctx.moveTo(Math.round(originX.real),-10000);
+    ctx.lineTo(Math.round(originX.real),10000);
+    ctx.moveTo(-10000,Math.round(originY.real));
+    ctx.lineTo(10000,Math.round(originY.real));
     ctx.stroke();
-    drawCanvasTitle();
-    ctx.fillText("X : " + ((mouse.x-originX)/scaleV).toFixed(2) + " Y : " + ((mouse.y-originY)/scaleV).toFixed(2),mouse.x,mouse.y);
-    */
+    //drawCanvasTitle();
+    //ctx.fillText("X : " + ((mouse.x-originX)/scaleV).toFixed(2) + " Y : " + ((mouse.y-originY)/scaleV).toFixed(2),mouse.x,mouse.y);
+    
 }
 
 var drawCanvasTitle = function(){

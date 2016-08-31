@@ -230,6 +230,26 @@ var webGLHelper = (function(){
             }
             return programSource;
         },
+        addUtillity : function(programName,functions){
+            if(programSource[programName] === undefined){
+                programSource[programName] = {};
+                
+            }
+            if(programSource[programName].utilities === undefined){
+                programSource[programName].utilNames = [];
+                programSource[programName].utilities = {};
+                
+            }
+            functions.forEach(f => {
+                if(programSource[programName].utilNames.indexOf(f.name) === -1){
+                    programSource[programName].utilNames.push(f.name);
+                }
+                programSource[programName].utilities[f.name] = f.func;
+                
+                
+            })
+            return programSource;
+        },        
         createProgram : function (gl, pname) {// creates vertex and fragment shaders
             var shaders = [];
             var variables = {};
@@ -258,6 +278,11 @@ var webGLHelper = (function(){
             vars.program = program;
             vars.name = name;
             vars.id = id ++;
+            if(s.utilNames !== undefined){
+                s.utilNames.forEach(f=>{
+                    vars[f] = s.utilities[f];
+                });
+            }
             return vars;
         },
     };

@@ -42,6 +42,45 @@
                 a = clamp(a,0.5,1.0);
                 gl_FragColor = vec4(0,0,0,a);
             }`);}
+{webGLHelper.addUtillity("grid",
+    [{
+        name : "setCheckerColor",
+        func : function(id,rgb){
+            id %= 2;
+            if(!Array.isArray(rgb)){
+                throw new RangeError("setCheckerColor requires an array [r,g,b].");
+            }
+            this.prep(rgb,id * 3);
+        },
+    },{
+        name : "setCheckerAlpha",
+        func : function(id,alpha){
+            if(id === null){
+                this.prep([alpha,alpha],9);
+                
+            }else{
+                id %= 2;
+                this.prep([alpha],9+id);
+            }
+        },
+    },{
+        name : "setLineColor",
+        func : function(rgb){
+            if(!Array.isArray(rgb)){
+                throw new RangeError("setLineColor requires an array [r,g,b].");
+            }
+            this.prep(rgb,6);
+        },
+    },{
+        name : "setLineWidth",
+        func : function(width){
+            this.prep([width],13);
+        },
+    },
+    
+    ]
+)}
+            
 {webGLHelper.addShader("grid",`
             #type vertex;      
             #name grid;
