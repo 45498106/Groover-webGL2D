@@ -13,6 +13,7 @@ var fullScreenRender = (function(){
 
     var cs;
     var gridColours = new Float32Array([0.8,0.8,0.8, 0.9,0.9,0.9, 0,0,0, 0.95,0.95,1, 1,1,0]);
+    var gridAlphas = new Float32Array([0.8,0.8,0.8]);
     var setColours = function(data,offset){
         if(data !== undefined){
             gridColours.set(data,offset);
@@ -98,6 +99,25 @@ var fullScreenRender = (function(){
                 cs.prep();
             }
         },   
+        drawGrid : function(originX,originY,scaleXY){
+
+            var startGridSize = Math.pow(8.0,Math.floor(Math.log(256.0 / scaleXY) / Math.log(8.0) - 1.0));
+            var fade = Math.pow((((startGridSize * scaleXY)-4.0)/28.0),gridColours[12]);
+            gridAlphas[0] = startGridSize * scaleXY;
+            gridAlphas[1] = fade;
+            gridAlphas[2] = Math.pow(0.5,gridColours[12]);
+            
+            origin[0] = (-originX) * screen[0];
+            origin[1] = (h-originY) * screen[1];
+            scale[0] = scaleXY;
+            scale[1] = scaleXY;
+            gl.uniform2fv(cs.origin, origin);
+            gl.uniform2fv(cs.scale, scale);
+            gl.uniform3fv(cs.desc, gridAlphas);
+            gl.drawArrays(gl.TRIANGLES, 0, 6);
+        },
+        
+    
         draw : function(originX,originY,scaleXY){
             origin[0] = -originX;
             origin[1] = h-originY;
@@ -106,7 +126,8 @@ var fullScreenRender = (function(){
             gl.uniform2fv(cs.origin, origin);
             gl.uniform2fv(cs.scale, scale);
             gl.drawArrays(gl.TRIANGLES, 0, 6);
-        }
+        },
+        
         
     };
     return API;

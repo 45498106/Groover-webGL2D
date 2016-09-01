@@ -22,18 +22,7 @@ var canvasMouse = (function(){
         return c;
     }
 
-    var webGLSettings = {
-        context : "webgl2",
-        contextOptions : {
-            alpha: true,
-            depth: false,
-            stencil: false,
-            antialias: false,
-            premultipliedAlpha: false,
-            preserveDrawingBuffer: true,
-            failIfMajorPerformanceCaveat : false            
-        }
-    }
+
 
     resizeCanvas = function () {
         if (canvas === undefined) { 
@@ -42,7 +31,8 @@ var canvasMouse = (function(){
         webGL.width = canvas.width = window.innerWidth; 
         webGL.height = canvas.height = window.innerHeight; 
 
-        webGL.gl = webGL.getContext(API.webGLSettings.context,API.webGLSettings.options);
+        //webGL.gl = webGL.getContext(API.webGLSettings.context,API.webGLSettings.options);
+        webGL.gl = webGL.getContext(API.webGLSettings.context);
         ctx = canvas.getContext("2d"); 
 
         if (typeof setGlobals === "function") { 
@@ -80,7 +70,7 @@ var canvasMouse = (function(){
             m.alt = e.altKey; m.shift = e.shiftKey; m.ctrl = e.ctrlKey;
             if (t === "mousedown") { m.buttonRaw |= m.bm[e.which-1]; }  
             else if (t === "mouseup") { m.buttonRaw &= m.bm[e.which + 2]; }
-            else if (t === "mouseout") { m.buttonRaw = 0; m.over = false; }
+            else if (t === "mouseout") { /*m.buttonRaw = 0;*/ m.over = false; }
             else if (t === "mouseover") { m.over = true; }
             else if (t === "mousewheel") { m.w = e.wheelDelta; }
             else if (t === "DOMMouseScroll") { m.w = -e.detail; }
@@ -89,8 +79,16 @@ var canvasMouse = (function(){
             e.preventDefault();
         }
         m.updateBounds = function(){
-            if(m.active){
-                m.bounds = m.element.getBoundingClientRect();
+            if(m.noBounds){
+                if(m.bounds === null){
+                    m.bounds = {};
+                }
+                m.bounds.top = 0;
+                m.bounds.left = 0;
+            }else{
+                if(m.active){
+                    m.bounds = m.element.getBoundingClientRect();
+                }
             }
         }
         m.addCallback = function (callback) {
@@ -100,8 +98,14 @@ var canvasMouse = (function(){
             } else { throw new TypeError("mouse.addCallback argument must be a function"); }
         }
         m.start = function (element, blockContextMenu) {
-            if (m.element !== U) { m.removeMouse(); }        
-            m.element = element === U ? document : element;
+            if (m.element !== U) { m.removeMouse(); }      
+            if(element === U){
+                m.element = document;
+                m.noBounds = true;
+            }else{
+                m.element = element;
+                m.noBounds = false;
+            }
             m.blockContextMenu = blockContextMenu === U ? false : blockContextMenu;
             m.mouseEvents.forEach( n => { m.element.addEventListener(n, mouseMove); } );
             if (m.blockContextMenu === true) { m.element.addEventListener("contextmenu", preventDefault, false); }
@@ -155,7 +159,7 @@ var canvasMouse = (function(){
         ctx : null,
         webGL : null,
         webGLSettings : {
-            context : "webgl2",
+            context : "webgl",
             options : {
                 alpha: true,
                 depth: false,
@@ -171,7 +175,7 @@ var canvasMouse = (function(){
             this.canvas = canvas;
             this.ctx = ctx;
             this.webGL = webGL;
-            mouse.start(canvas,true); 
+            mouse.start(undefined,true); 
             window.addEventListener("resize",resizeCanvas); 
         },
         start : function(){

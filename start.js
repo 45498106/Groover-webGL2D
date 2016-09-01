@@ -51,13 +51,13 @@ function renderer(){
     if(mouse.w !== 0){
         mouseRX = ((mouse.x-originX.value)/scale.value);
         mouseRY = ((mouse.y-originY.value)/scale.value);         
-        while(mouse.w !== 0){
+        while(Math.abs(mouse.w) > 0.25){
             if(mouse.w < 0){
                 scale.value *= 1.01;
             }else{
                 scale.value *= 1/1.01;
             }
-            mouse.w -= Math.sign(mouse.w) * 20;;
+            mouse.w *= 0.5;//Math.sign(mouse.w) * 20;;
         }
         originX.value = mouse.x-mouseRX*scale.value;
         originY.value = mouse.y-mouseRY*scale.value;
@@ -88,7 +88,7 @@ function renderer(){
     }
     
     fullScreenRender.prepRender(fullScreenRender.shaders.grid);
-    fullScreenRender.draw(Math.round(originX.real),Math.round(originY.real),scale.real);   
+    fullScreenRender.drawGrid(Math.round(originX.real),Math.round(originY.real),scale.real);   
 
     lastMx = mouse.x;
     lastMy = mouse.y;
@@ -97,10 +97,18 @@ function renderer(){
 ctx.clearRect(0,0,w,h);
     //var a = 1.0-(((startGridSize * scale.x)-4.0)/28.0);
     var  m = (8) * startGridSize * scale.real;    
+    ctx.lineWidth = 3;
+    ctx.fillStyle = ctx.strokeStyle = UIColour;
+    ctx.beginPath();
+    ctx.moveTo(Math.round(originX.real),-10000);
+    ctx.lineTo(Math.round(originX.real),10000);
+    ctx.moveTo(-10000,Math.round(originY.real));
+    ctx.lineTo(10000,Math.round(originY.real));
+    ctx.stroke();
    // ctx.clearRect(0,h-40,w,40);
     ctx.font = "16px arial";    
     ctx.lineWidth = 2;
-    ctx.fillStyle = ctx.strokeStyle = UIColour;
+
     ctx.beginPath();
     ctx.moveTo(w * 0.5 - m, h-20);
     ctx.lineTo(w * 0.5 + m, h-20);
@@ -124,14 +132,6 @@ ctx.clearRect(0,0,w,h);
   
     
    // ctx.clearRect(0,0,w,h);
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = "red";
-    ctx.beginPath();
-    ctx.moveTo(Math.round(originX.real),-10000);
-    ctx.lineTo(Math.round(originX.real),10000);
-    ctx.moveTo(-10000,Math.round(originY.real));
-    ctx.lineTo(10000,Math.round(originY.real));
-    ctx.stroke();
     //drawCanvasTitle();
     //ctx.fillText("X : " + ((mouse.x-originX)/scaleV).toFixed(2) + " Y : " + ((mouse.y-originY)/scaleV).toFixed(2),mouse.x,mouse.y);
     
@@ -167,26 +167,29 @@ function resizedCanvas(){
 
 var styles = [
     {
+        name : "Home",
+        
+    },{
         name : "Light",
         data : [0.91,0.91,0.91, 0.982,0.982,0.982, 0,0,0, 1,1,1, 1,1,0],
-        color : "black",
-    },
-    {
-        name : "Green",
+        color : "black",        
+    },{
+        name : "Terminal",
         data : [0.1,0.4,0.1, 0.2,0.6,0.2, 0.4,0.9,0.4, 1,1,1, 1,1,0],
+        color : "#0f0",
+    },{
+        name : "Ocean",
+        data : [0.1,0.6,0.4, 0.2,0.8,0.8, 0.7,0.9,1, 1,1,1, 1,1,0],
         color : "white",
-    },    
-    {
-        name : "Dark",
-        data : [0.1,0.1,0.1, 0.2,0.2,0.2, 0.9,0.9,0.9, 1,1,1, 1,1,0],
+    },{
+        name : "Midnight",
+        data : [0.1,0.1,0.1, 0.2,0.2,0.2, 0.9,0.9,0.9, 1,1,1,1,1,0],
         color : "white",
-    },    
-    {
+    },{
         name : "Lines",
-        data : [0.1,0.1,0.1, 0.2,0.2,0.2, 0.0,0.0,0.0, 0,0,1.4, 1,1,0],
+        data : [0.1,0.1,0.1, 0.2,0.2,0.2, 0.0,0.0,0.0, 0,0,1.4, 0.5,1,0],
         color : "black",
-    },     
-    {
+    },{
         name : "Blue",
         data : [1.0,1.0,1.0, 0.99,0.99,1.0, 0.0,0.0,1.0 ,1,1,1.2, 1,2,0],
         color : "#00F",
@@ -194,25 +197,34 @@ var styles = [
     
 ]
 function setStyle(event){
-
-    UIColour = this.dataStyle.color;
-    var t = transition;   
-    t.position = 1;
-    t.dataFrom = t.dataTo;
-    t.dataTo = this.dataStyle.data;
-    styles.forEach(s=>{
-        s.element.className = "btn " + this.dataStyle.name;
-    });
-    
+    var info = document.getElementById("infoContainer");
+    info.className = "info " + this.dataStyle.name;
+    if(this.dataStyle.name === "Home"){
+        originX.value = canvasMouse.canvas.width/2;
+        originY.value = canvasMouse.canvas.height/2;
+        scale.value = 1;
+        
+        
+    }else{
+        UIColour = this.dataStyle.color;
+        var t = transition;   
+        t.position = 1;
+        t.dataFrom = t.dataTo;
+        t.dataTo = this.dataStyle.data;
+        styles.forEach(s=>{
+            s.element.className = "btn overFX " + this.dataStyle.name;
+        });
+    }
     
 }
 function createUI(){
     var uiC = document.getElementById("uiContainer");
+
     styles.forEach(s=>{
         var span = document.createElement("span");
         span.textContent = s.name;
         span.dataStyle = s;
-        span.className = "btn White";
+        span.className = "btn overFX Light";
         span.addEventListener("click",setStyle);
         uiC.appendChild(span);
         s.element = span;

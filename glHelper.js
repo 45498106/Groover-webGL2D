@@ -83,17 +83,29 @@ var webGLHelper = (function(){
         }
         return vars;
     }
-    var report = function(gl,item,type,name){
+    var report = function(gl,item,type,name,source){
         var str = type === "shader" ? gl.getShaderInfoLog(item):gl.getProgramInfoLog(item);;
         var error = false;
         str = str.split("\n")
         str.forEach(l => {
             if(l.substr(0,5) === "ERROR"){
                 glErrors.push({message : l,type : type,name : name});
+                var line;
+                if(source !== undefined){
+                    var lines = source.split("\n");
+                    line = Number(l.replace(/  /g," ").split(" ")[1].split(":")[1]);
+                    line = "Line "+line+" >> " + lines[line-1];
+                }
                 if(typeof log === "function"){
-                    log(l.replace("ERROR:","Error in: " + name + " "))
+                    log(l.replace("ERROR:","Error in: " + name + " "));
+                    if(line){
+                        log(line);
+                    }
                 }else{
-                    console.log(l.replace("ERROR:","Error in: " + name + " "));
+                    console.error(l.replace("ERROR:","Error in: " + name + " "));
+                    if(line){
+                        console.log(line);
+                    }
                 }
                 error = true;
             }
@@ -265,7 +277,7 @@ var webGLHelper = (function(){
                     var source = getVariables(script.source,variables);
                     gl.shaderSource(shader, source);
                     gl.compileShader(shader);
-                    if(report(gl,shader,"shader",n)){throw new ReferenceError("WEBGL Shader error : Program : '"+pname+"' shader : " + n); }
+                    if(report(gl,shader,"shader", n, source)){throw new ReferenceError("WEBGL Shader error : Program : '"+pname+"' shader : " + n); }
                     shaders.push(shader);
                 }
             });

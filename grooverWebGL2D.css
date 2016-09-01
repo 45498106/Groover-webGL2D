@@ -1,6 +1,49 @@
 body {
     font-family: arial,sans-serif;
 }
+/* Title at top of page */
+.title {
+    position :absolute;
+    top : 10px;
+    width : 90%;
+    z-index : 200;
+    text-align : center;
+    left: 5%;
+    font-weight : 700;
+}
+.nameT {
+    font-size : 64px;
+    color : white;
+    text-shadow:          
+         2px  2px black,
+         2px -2px black,
+        -2px -2px black,
+        -2px  2px black; 
+}
+.descT {
+    font-size : 28px;
+    color : black;
+    text-shadow: 
+         1px  1px white,
+         1px -1px white,
+        -1px -1px white,
+        -1px  1px white;
+}
+
+
+.info {
+    position :absolute;
+    top : 30%;
+
+    width : 40%;
+    z-index : 200;
+    text-align : center;
+    left: 30%;
+    font-weight : 100;
+    font-size : 18px;
+}
+
+/* UI at bottom of page */
 .ui {
     position :absolute;
     bottom : 40px;
@@ -19,20 +62,89 @@ body {
     text-align : center;
     width : 120px;
     padding-left: 10px;
-    padding-right: 10px;    
+    padding-right: 10px;  
+    margin: 2px;    
 }
+
 .Blue {
     color : #00F;
+    background : rgba(0,120,120,0.25);
 }
+.Blue:before  {
+    border: #00F solid 2px;    
+}
+
 .Light {
     color : black;
+    background : rgba(255,255,255,0.5);
 }
-.Dark {
+.Light:before  {
+    border: black solid 2px;    
+}
+
+.Midnight {
     color : white;
+    background : rgba(0,0,0,0.5);    
 }
+.Midnight:before  {
+    border: white solid 2px;    
+}
+
 .Lines {
     color : black;
+    background : rgba(255,255,255,0.5);
 }
-.Green {
+.Lines:before  {
+    border: black solid 2px;    
+}
+
+.Terminal {
     color : white;
+    background : rgba(0,255,0,0.5);
+}
+.Terminal:before  {
+    border: white solid 2px;    
+}
+
+.Ocean {
+    color : white;
+    background : rgba(0,155,155,0.5);
+}
+.Ocean:before  {
+    border: white solid 2px;    
+}
+
+
+/* Outline In */
+.overFX {
+  display: initial;
+  vertical-align: middle;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  box-shadow: 0 0 1px rgba(0, 0, 0, 0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  -moz-osx-font-smoothing: grayscale;
+  position: relative;
+}
+.overFX:before {
+  pointer-events: none;
+  content: '';
+  position: absolute;
+  top: -16px;
+  right: -16px;
+  bottom: -16px;
+  left: -16px;
+  opacity: 0;
+  -webkit-transition-duration: 0.1s;
+  transition-duration: 0.1s;
+  -webkit-transition-property: top, right, bottom, left;
+  transition-property: top, right, bottom, left;
+}
+.overFX:hover:before, .overFX:focus:before, .overFX:active:before {
+  top: -2px;
+  right: -2px;
+  bottom: -2px;
+  left: -2px;
+  opacity: 1;
 }
