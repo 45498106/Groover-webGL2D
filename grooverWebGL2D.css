@@ -44,6 +44,10 @@ body {
     padding: 6px;
     border: 1px solid rgba(0,0,0,0.5);
 }
+/* unsorted list put text on left */
+ul {
+    text-align : left;
+}
 /* to hide anything */
 .hide  {
     display : none;

@@ -168,6 +168,7 @@ function draw2DCanvasGrid(){
     // draw the origin values
     var numStep = gridSteps  * Math.pow(gridSteps,gridExp);
     var dig = 0;
+    gridExp += 1; // don't add decimal points to early
     if(gridExp < 0){
         dig = -gridExp;
     }    
@@ -216,11 +217,13 @@ function resizedCanvas(){
 
 var styles = [
     {   name : "Steps +", 
+        data : "control",
     },{
-       name : "Steps -" 
+        name : "Steps -",
+        data : "control",
     },{
         name : "Home",
-        
+        data : "control",        
     },{
         name : "Light",
         data : [0.91,0.91,0.91, 0.982,0.982,0.982, 0,0,0, 1,1,1, 1,1,0],
@@ -254,7 +257,7 @@ var styles = [
 ]
 function setStyle(event){
     var info = document.getElementById("infoContainer");
-    if(infoCount === 1 && this.dataStyle.name !== "Home"){
+    if(infoCount === 1 && this.dataStyle.data !== "control"){
         // hide first info text
         var e = document.querySelectorAll(".firstInfo");
         for(var i = 0; i < e.length; i ++){
@@ -271,14 +274,14 @@ function setStyle(event){
     if(this.dataStyle.name === "Home"){
         originX.value = canvasMouse.canvas.width/2;
         originY.value = canvasMouse.canvas.height/2;
-        scale.value = 1;
-        
-    }else if(this.dataStyle.name === "Steps +" || this.dataStyle.name === "Steps -"){
+        scale.value = 1; 
+    }else if(this.dataStyle.data === "control"){
         if(this.dataStyle.name === "Steps +"){
             gridSteps += 1;
         }else{
             gridSteps -= 1;
         }
+        gridSteps = Math.max(2, Math.min(16, gridSteps));
         fullScreenRender.shaders.grid.setSteps(gridSteps);
     }else{
         UIColour = this.dataStyle.color;

@@ -82,10 +82,10 @@
     },{
         name : "setSteps",
         func : function(step){
-            if(isNaN(step) || step < 1){
+            if(isNaN(step) || step < 2 || step > 16){
                 return;
             }
-            this.prep({steps : step});
+            this.prep({steps : Math.floor(step)});
             
         }
     }

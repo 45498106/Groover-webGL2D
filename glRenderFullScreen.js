@@ -105,11 +105,7 @@ var fullScreenRender = (function(){
             }
         },   
         drawGrid : function(originX,originY,scaleXY){
-
-            //var startGridSize = Math.pow(8.0,Math.floor(Math.log(256.0 / scaleXY) / Math.log(8.0) - 1.0));
             var startGridSize = Math.pow(gridSteps,Math.floor(Math.log((32 * gridSteps) / scaleXY) / Math.log(gridSteps) - 1.0));
-            debugg.textContent = "Steps = "+gridSteps+ " : "+( startGridSize * scaleXY).toFixed(2);
-            //var fade = Math.pow(((startGridSize * scaleXY)-4.0)/28.0,gridColours[12]);
             var fade = Math.pow(((startGridSize * scaleXY)-(gridSteps/2))/(32-gridSteps/2),gridColours[12]);
             gridAlphas[0] = startGridSize * scaleXY;
             gridAlphas[1] = fade;
