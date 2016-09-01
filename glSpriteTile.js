@@ -34,19 +34,19 @@ var spriteTile = (function(){
                 map = new Uint8Array(map);
                 tileInfo.width = this.width;
                 tileInfo.height = Math.floor(map.length / this.width);
-                tileInfo.texture = webGLHelper.createImageFromData(webGL.gl,this.width,webGL.gl.LUMINANCE,map);
+                tileInfo.texture = webGLHelper.createImageFromData(canvasMouse.webGL.gl,this.width,canvasMouse.webGL.gl.LUMINANCE,map);
                 tileInfo.ready = true;
                 //log("Map time loaded tiles: " +tileId.length+ " W : " +tileInfo.width+ " H : " +tileInfo.height )
 
             }
-            tileInfo.image = loadImage(tileInfo.url,loadMap)
+            tileInfo.image = imageLoader.loadImage(tileInfo.url,loadMap)
             tileInfo.ready = false;
         },
         loadSpriteSheet : function (sprites){
             var load = function(image){
                 sprites.image.sprites = sprites.sprites;
                 if(sprites.texture === null){
-                    sprites.texture = webGLHelper.createTexture(webGL.gl,this);
+                    sprites.texture = webGLHelper.createTexture(canvasMouse.webGL.gl,this);
                     if(sprites.sprites !== undefined){
                         var len = sprites.sprites.length;
                         sprites.locations = new Int32Array(len * 4);
@@ -86,7 +86,7 @@ var spriteTile = (function(){
                 }
                 sprites.ready = true;
             }
-            sprites.image = loadImage(sprites.url,load);
+            sprites.image = imageLoader.loadImage(sprites.url,load);
             sprites.ready = false;
         },
     }

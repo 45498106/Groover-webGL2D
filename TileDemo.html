@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html id="topDoc">
+    <head>
+        <meta http-equiv="Content-Type" content="text/html;charset=ISO-8859-8">
+        <title>Groover WebGL2D</title>
+        <meta name="keywords" content="Canvas, 2D, webGL, webGL2, JavaScript, Mark Spronck, Groover, Groover-WebGL2D" />
+        <meta name="description" content="Example use of Groover-WebGL2D" />
+        <meta name="author" content="Mark Spronck" />
+        <link rel="stylesheet" type="text/css" href="grooverWebGL2D.css">
+        <script src = "canvasMouse.js"></script>
+        <script src = "glHelper.js"></script>
+        <script src = "glImageLoader.js"></script>
+        <script src = "glSpriteTile.js"></script>
+        <script src = "glShaders.js"></script>
+        <script src = "glRenderSprites.js"></script>
+        <script src = "glRenderFullScreen.js"></script>
+        
+    </head>
+    <body>
+    <div class="title">
+        <div class="nameT">Groover-WebGL2D</div>
+        <div class="descT">Fullscreen tiles. webGL1 shader.</div>
+
+    </div>    
+    <div class="info Light" id = "infoContainer">
+         <p class="firstInfo">Displaying tile maps via canvas 2D can be very slow, eating away at you games frame rate. This shader renders a tile map in one pass and is very quick. It will no longer be a question of how many tiles can I render but how many tle map layers is too many? </p>
+         <p class="firstInfo">Shader features include zoomable, repeatable, fadeable, parallaxable full screen tile maps, from both regular and irregular sprite sheets.</p>
+    </div> 
+
+    <div class="ui" id="uiContainer">
+
+    </div>
+    <script src="tileDemoStart.js"></script>
+    </body>
+</html>

@@ -391,7 +391,7 @@
             #name batchSprite;
             #attribute vec4 position;
             #attribute vec2 texcoord;
-            // pos, scale, textPos, textScale,rotation,screenAspect,alpha,scale,center,tile
+            // 0 pos, 1 scale, 2 textPos, 3 textScale, 4 (rotation,screenAspect), 5 (alpha,scale), 6 center, 7 tile
             #uniform vec2 desc[8];   
             #uniform float pos[640];
             #uniform ivec4 loc[21];
@@ -443,7 +443,8 @@
                    }           
                }
                tex /= desc[7];               
-               vec2 posV = (vt +  desc[6]) * pos[ind + 2] * 2.0 * desc[5].y;      
+               //vec2 posV = (vt +  desc[6]) * pos[ind + 2] * 2.0 * desc[5].y;      
+               vec2 posV = (vt - vec2(0.5,0.5)) * pos[ind + 2] * 2.0 * desc[5].y;      
                vec2 rot = vec2(cos(pos[ind + 3]),sin(pos[ind + 3]));
                tMat[0][0] = rot.x;
                tMat[1][0] = rot.y;

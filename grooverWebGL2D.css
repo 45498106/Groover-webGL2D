@@ -29,7 +29,19 @@ body {
         -1px -1px white,
         -1px  1px white;
 }
+/* status display element */
+.stats {
+    z-index : 200;
 
+    font-weight : 100;
+    font-size : 18px;
+    padding: 3px;
+    border: 1px solid rgba(0,0,0,0.5);
+    background : rgba(255, 255, 255, 0.75);
+    display: initial;
+    
+    
+}
 /* info pannel at center of page*/
 .info {
     position :absolute;

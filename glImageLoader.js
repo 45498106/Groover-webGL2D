@@ -1,8 +1,7 @@
 var imageLoader = (function(){
     var imageCount = 0;
-    var imagesLoadedCallBack = null;
     var API = {
-        imagesLoadedCallBack : null,
+        imagesLoadedCallback : null,
         loadImage : function (url,callback){
             imageCount += 1;
             var image = new Image();
@@ -12,8 +11,8 @@ var imageLoader = (function(){
                     (callback.bind(this))(this);
                 }
                 imageCount -= 1;
-                if(imageCount === 0 &&  typeof imagesLoadedCallBack === "function"){
-                    imagesLoadedCallBack();
+                if(imageCount === 0 &&  typeof API.imagesLoadedCallback === "function"){
+                    API.imagesLoadedCallback();
                 }    
             }
             image.onerror = function(event){

@@ -112,7 +112,7 @@ var spriteRender = (function(){
             su[12] = cx;
             su[13] = cy;
         },
-        flushSpriteBatch : function(){
+        flush : function(){
             if(batched > 0){
                 gl.uniform2fv(cs.desc, spriteUniform);
                 gl.uniform1fv(cs.pos, batch);
@@ -130,6 +130,8 @@ var spriteRender = (function(){
                 su[7] = s[7];
                 su[10] = alpha;
                 su[11] = 1;
+                //su[12] = 0.05;
+                //su[13] = 0.0;                
             }
             batch[batched++] = x/w;
             batch[batched++] = y/-h;
