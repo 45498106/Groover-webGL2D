@@ -30,19 +30,29 @@ body {
         -1px  1px white;
 }
 
-
+/* info pannel at center of page*/
 .info {
     position :absolute;
     top : 30%;
 
-    width : 40%;
+    width : 50%;
     z-index : 200;
     text-align : center;
-    left: 30%;
+    left: 25%;
     font-weight : 100;
     font-size : 18px;
+    padding: 6px;
+    border: 1px solid rgba(0,0,0,0.5);
 }
-
+/* to hide anything */
+.hide  {
+    display : none;
+}
+.secondInfo {
+    display : none;
+}
+.firstInfo {} /* does nothing just here as a stub and used by JS to locate DOM elements */
+    
 /* UI at bottom of page */
 .ui {
     position :absolute;
@@ -72,6 +82,13 @@ body {
 }
 .Blue:before  {
     border: #00F solid 2px;    
+}
+.Plans {
+    color : #AFF;
+    background : rgba(0,120,120,0.25);
+}
+.Plans:before  {
+    border: #AFF solid 2px;    
 }
 
 .Light {

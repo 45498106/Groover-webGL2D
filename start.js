@@ -1,6 +1,7 @@
 var lastMx;
 var lastMy;
-
+var screenBounds = {top : 0, bottom : 0, left : 0, right : 0};
+var gridBounds = {top : 0, bottom : 0, left : 0, right : 0};
 
 function Chaser(value,accel,drag){
     this.value = value;
@@ -35,8 +36,9 @@ var transition = {
     data : [0.91,0.91,0.91,0.982,0.982,0.982,0,0,0,1,1,1,1,1,1],
 }
 var UIColour = "black";
-
-
+var countOutInfo = 40;
+var infoCount = 0;
+var gridSteps = 4;
 function renderer(){
     var canvas = canvasMouse.canvas;
     var ctx = canvasMouse.ctx;
@@ -65,6 +67,15 @@ function renderer(){
 
     }
     if(mouse.buttonRaw & 1){
+        if(countOutInfo > 0){
+            countOutInfo -= 1;
+        }else{
+            if(countOutInfo === 0){
+                countOutInfo = -1;
+                document.getElementById("infoContainer").className = "hide";
+                infoCount += 1;
+            }
+        }
         originX.value += (mouse.x - lastMx);
         originY.value += (mouse.y - lastMy);
        
@@ -92,69 +103,107 @@ function renderer(){
 
     lastMx = mouse.x;
     lastMy = mouse.y;
-    var gridStep = Math.floor(Math.log(256.0 / scale.real) / Math.log(8.0) - 1.0);
-    var startGridSize = Math.pow(8.0,gridStep);
-ctx.clearRect(0,0,w,h);
-    //var a = 1.0-(((startGridSize * scale.x)-4.0)/28.0);
-    var  m = (8) * startGridSize * scale.real;    
-    ctx.lineWidth = 3;
+    ctx.clearRect(0,0,w,h);
+    draw2DCanvasGrid();
+    
+}
+
+// draws origin lines, ticks, and numbers
+function draw2DCanvasGrid(){
+    var canvas = canvasMouse.canvas;
+    var ctx = canvasMouse.ctx;
+    var w = canvas.width;
+    var h = canvas.height;    
+    var sb = screenBounds;
+    var gb = gridBounds;
+    
+    
+    var gridExp = Math.floor(Math.log((gridSteps*32) / scale.real) / Math.log(gridSteps) - 1.0);
+    var startGridSize = Math.pow(gridSteps,gridExp); 
+    var size = startGridSize * scale.real*gridSteps; // size of ticks in screen space
+  
+
+    // get the bounds in screen and grid space
+    sb.left = 20;
+    sb.top = 20;
+    sb.right = w - 20;
+    sb.bottom = h - 20;
+    gb.left = ((sb.left - originX.real) / scale.real);
+    gb.top = ((sb.top - originY.real) / scale.real);
+    gb.right = ((sb.right - originX.real) / scale.real);
+    gb.bottom = ((sb.bottom - originY.real) / scale.real);
+    
+    var ox = originX.real; // origin in screen space
+    var oy = originY.real;
+    
+    // get the tick start and ends for origin lines
+    var ticStartX = Math.floor((sb.left - ox) / size) * size;
+    var ticEndX = (Math.floor((sb.right - ox) / size) + 1) * size;
+    var ticStartY = -Math.floor((oy - sb.top) / size) * size;
+    var ticEndY = (Math.floor((sb.bottom - oy) / size) + 1) * size    
+
+
+    // draw the origin lines and ticks
+    ctx.lineWidth = 1.5;
     ctx.fillStyle = ctx.strokeStyle = UIColour;
     ctx.beginPath();
-    ctx.moveTo(Math.round(originX.real),-10000);
-    ctx.lineTo(Math.round(originX.real),10000);
-    ctx.moveTo(-10000,Math.round(originY.real));
-    ctx.lineTo(10000,Math.round(originY.real));
-    ctx.stroke();
-   // ctx.clearRect(0,h-40,w,40);
-    ctx.font = "16px arial";    
-    ctx.lineWidth = 2;
-
-    ctx.beginPath();
-    ctx.moveTo(w * 0.5 - m, h-20);
-    ctx.lineTo(w * 0.5 + m, h-20);
-    ctx.moveTo(w * 0.5 - m, h-25);
-    ctx.lineTo(w * 0.5 - m, h-15);    
-    ctx.moveTo(w * 0.5 + m, h-25);
-    ctx.lineTo(w * 0.5 + m, h-15);     
-    ctx.stroke();    
-    var dis = 16  * Math.pow(8.0,gridStep);;
-    if(gridStep < 0){
-        dis = dis.toFixed(-gridStep);
-    }else{
-        dis = dis.toFixed(0);
+    if(ox > sb.left && ox < sb.right){
+        ctx.moveTo(Math.round(ox),20);
+        ctx.lineTo(Math.round(ox),h-20);   
+        for(var i = ticStartY; i < ticEndY; i += size){
+            ctx.moveTo(ox - 5,i+oy);
+            ctx.lineTo(ox + 5,i+oy);   
+        }      
     }
-    ctx.fillText(dis+ " Pix",w * 0.5,h-25);
-    //fullScreenRender.shaders.grid.setCheckerColor(0,[Math.random(),Math.random(),Math.random()]);
-    //fullScreenRender.shaders.grid.setCheckerColor(1,[Math.random(),Math.random(),Math.random()]);
-    //fullScreenRender.shaders.grid.setLineColor([Math.random(),Math.random(),Math.random()]);
-   // fullScreenRender.shaders.grid.setLineWidth(Math.random()*5);
-    //fullScreenRender.shaders.grid.setCheckerAlpha(null,Math.random());
-  
+    if(oy > sb.top && oy < sb.bottom){
+        ctx.moveTo(20,Math.round(oy));
+        ctx.lineTo(w-20,Math.round(oy));
+        for(var i = ticStartX; i < ticEndX; i += size){
+            ctx.moveTo(i + ox,oy - 5);
+            ctx.lineTo(i + ox,oy + 5);   
+        }         
+    }
+    ctx.stroke();
     
-   // ctx.clearRect(0,0,w,h);
-    //drawCanvasTitle();
-    //ctx.fillText("X : " + ((mouse.x-originX)/scaleV).toFixed(2) + " Y : " + ((mouse.y-originY)/scaleV).toFixed(2),mouse.x,mouse.y);
+    // draw the origin values
+    var numStep = gridSteps  * Math.pow(gridSteps,gridExp);
+    var dig = 0;
+    if(gridExp < 0){
+        dig = -gridExp;
+    }    
+    
+    size *= 2;
+    numStep *= 2;
+    var ticStartX = Math.floor((sb.left - ox) / size) * size;
+    var ticEndX = (Math.floor((sb.right - ox) / size) + 1) * size;
+    var ticStartY = -Math.floor((oy - sb.top) / size) * size;
+    var ticEndY = (Math.floor((sb.bottom - oy) / size) + 1) * size      
+    ctx.font = "16px arial";  
+    ctx.textBaseline = "hanging";
+    ctx.textAlign = "center";   
+    if(ox > sb.left && ox < sb.right){
+        ctx.textBaseline = "middle";
+        ctx.textAlign = "right";   
+        for(var i = ticStartY; i < ticEndY; i += size){
+            var num = (numStep * (i/size)).toFixed(dig);
+            ctx.fillText(num,ox-5,i+oy);
+        }      
+        
+    }
+    if(oy > sb.top && oy < sb.bottom){
+        ctx.textBaseline = "hanging";
+        ctx.textAlign = "center";   
+        for(var i = ticStartX; i < ticEndX; i += size){
+            if(Math.abs(i) >size /2){
+                var num = (numStep * (i/size)).toFixed(dig);                
+                ctx.fillText(num,i + ox,oy + 6);
+            }
+        }         
+    }
+    
     
 }
 
-var drawCanvasTitle = function(){
-    var ctx = canvasMouse.ctx;
-    ctx.font = "64px arial black";
-    ctx.textAlign = "center";
-    ctx.lineJoin = "round";
-    ctx.fillStyle = "White";
-    ctx.strokeStyle = "black";
-    ctx.lineWidth = 5;
-    ctx.strokeText("Groover-WebGL2D",ctx.canvas.width/2,64);
-    ctx.fillText("Groover-WebGL2D",ctx.canvas.width/2,64);
-    ctx.font = "24px arial black";
-    ctx.strokeStyle = "White";
-    ctx.fillStyle = "black";
-    ctx.lineWidth = 1.3;    
-    ctx.strokeText("Full screen 2D grid shader",ctx.canvas.width/2,64+30);
-    ctx.fillText("Full screen 2D grid shader",ctx.canvas.width/2,64+30);
-    
-}
 
 function resizedCanvas(){
     fullScreenRender.canvasResized(canvasMouse.webGL);
@@ -166,7 +215,10 @@ function resizedCanvas(){
 }
 
 var styles = [
-    {
+    {   name : "Steps +", 
+    },{
+       name : "Steps -" 
+    },{
         name : "Home",
         
     },{
@@ -187,24 +239,47 @@ var styles = [
         color : "white",
     },{
         name : "Lines",
-        data : [0.1,0.1,0.1, 0.2,0.2,0.2, 0.0,0.0,0.0, 0,0,1.4, 0.5,1,0],
+        data : [0.1,0.1,0.1, 0.2,0.2,0.2, 0.0,0.0,0.0, 0,0,1.4, 1.5,1,0],
         color : "black",
     },{
         name : "Blue",
         data : [1.0,1.0,1.0, 0.99,0.99,1.0, 0.0,0.0,1.0 ,1,1,1.2, 1,2,0],
         color : "#00F",
+    },{
+        name : "Plans",
+        data : [0,0.4,0.8, 0.0,0.3,0.8, 0.7,0.8,1.0 ,1,1,1.2, 1,2,0],
+        color : "#AFF",
     },     
     
 ]
 function setStyle(event){
     var info = document.getElementById("infoContainer");
-    info.className = "info " + this.dataStyle.name;
+    if(infoCount === 1 && this.dataStyle.name !== "Home"){
+        // hide first info text
+        var e = document.querySelectorAll(".firstInfo");
+        for(var i = 0; i < e.length; i ++){
+            e[i].className = "hide";
+        }
+        // show second info text
+        var e = document.querySelectorAll(".secondInfo");
+        for(var i = 0; i < e.length; i ++){
+            e[i].className = "firstInfo";
+        }
+        info.className = "info " + this.dataStyle.name;
+        countOutInfo = 40;
+    }
     if(this.dataStyle.name === "Home"){
         originX.value = canvasMouse.canvas.width/2;
         originY.value = canvasMouse.canvas.height/2;
         scale.value = 1;
         
-        
+    }else if(this.dataStyle.name === "Steps +" || this.dataStyle.name === "Steps -"){
+        if(this.dataStyle.name === "Steps +"){
+            gridSteps += 1;
+        }else{
+            gridSteps -= 1;
+        }
+        fullScreenRender.shaders.grid.setSteps(gridSteps);
     }else{
         UIColour = this.dataStyle.color;
         var t = transition;   
@@ -242,7 +317,7 @@ window.addEventListener("load",function(){
     canvasMouse.onresize = resizedCanvas;    
     originX.value = canvasMouse.canvas.width/2;
     originY.value = canvasMouse.canvas.height/2;
-    drawCanvasTitle();
+
     webGLHelper.createCompositeFilters(canvasMouse.webGL.gl);
     fullScreenRender.setupWebGL(canvasMouse.webGL);
     spriteRender.setupWebGL(canvasMouse.webGL);   

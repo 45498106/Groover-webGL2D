@@ -74,13 +74,24 @@
     },{
         name : "setLineWidth",
         func : function(width){
+            if(isNaN(width) || width <= 0){
+                return;
+            }            
             this.prep([width],13);
         },
-    },
+    },{
+        name : "setSteps",
+        func : function(step){
+            if(isNaN(step) || step < 1){
+                return;
+            }
+            this.prep({steps : step});
+            
+        }
+    }
     
     ]
-)}
-            
+)}           
 {webGLHelper.addShader("grid",`
 
             #type vertex;      
@@ -106,7 +117,7 @@
             #uniform vec3 colours[5];
             #uniform vec2 scale;   // scale
             #uniform vec2 screen;  // inverse screen resolution
-            #uniform vec3 desc; // grid size, alpha fades,
+            #uniform vec4 desc; // grid size, alpha fades,
 
 
 
@@ -121,20 +132,17 @@
                 float a,aa;
                 vec2 lineWidth = screen * colours[4].y;
                 vec2 m = screen * desc.x;
-                vec2 m1  = m * 8.0 ;
-                vec2 m2  = m1 * 8.0 ;       
+                vec2 m1  = m * desc.w ;
+                vec2 m2  = m1 * desc.w ;       
                 vec2 gl1;  // grid lines 0-2;   
+                a = desc.y;   
                 
                 // find horizontal and vertical grid lines. 
                 if(colours[3].z <= 1.0){ // only 2 levels of lines
-                
-                    a = desc.y;                    
                     gl1 = (one - step(lineWidth, mod(tex, m1))) * a;
                     a = 1.0-a;
                     gl1 += (one - step(lineWidth, mod(tex, m2))) * a;
                 }else{                
-                    // 3 levels                
-                    a = desc.y;
                     aa = 0.5 * desc.z;
                     gl1 = (one - step(lineWidth, mod(tex, m)));
                     gl1 *=  a * aa;

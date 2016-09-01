@@ -13,10 +13,15 @@ var fullScreenRender = (function(){
 
     var cs;
     var gridColours = new Float32Array([0.8,0.8,0.8, 0.9,0.9,0.9, 0,0,0, 0.95,0.95,1, 1,1,0]);
-    var gridAlphas = new Float32Array([0.8,0.8,0.8]);
+    var gridAlphas = new Float32Array([0.8,0.8,0.8,4]);
+    var gridSteps = 4;
     var setColours = function(data,offset){
         if(data !== undefined){
-            gridColours.set(data,offset);
+            if(Array.isArray(data)){
+                gridColours.set(data,offset);
+            }else{
+                gridSteps = data.steps !== undefined ? data.steps : gridSteps;
+            }
         }
         gl.uniform3fv(cs.colours, gridColours);
     }
@@ -101,11 +106,15 @@ var fullScreenRender = (function(){
         },   
         drawGrid : function(originX,originY,scaleXY){
 
-            var startGridSize = Math.pow(8.0,Math.floor(Math.log(256.0 / scaleXY) / Math.log(8.0) - 1.0));
-            var fade = Math.pow((((startGridSize * scaleXY)-4.0)/28.0),gridColours[12]);
+            //var startGridSize = Math.pow(8.0,Math.floor(Math.log(256.0 / scaleXY) / Math.log(8.0) - 1.0));
+            var startGridSize = Math.pow(gridSteps,Math.floor(Math.log((32 * gridSteps) / scaleXY) / Math.log(gridSteps) - 1.0));
+            debugg.textContent = "Steps = "+gridSteps+ " : "+( startGridSize * scaleXY).toFixed(2);
+            //var fade = Math.pow(((startGridSize * scaleXY)-4.0)/28.0,gridColours[12]);
+            var fade = Math.pow(((startGridSize * scaleXY)-(gridSteps/2))/(32-gridSteps/2),gridColours[12]);
             gridAlphas[0] = startGridSize * scaleXY;
             gridAlphas[1] = fade;
             gridAlphas[2] = Math.pow(0.5,gridColours[12]);
+            gridAlphas[3] = gridSteps;
             
             origin[0] = (-originX) * screen[0];
             origin[1] = (h-originY) * screen[1];
@@ -113,7 +122,7 @@ var fullScreenRender = (function(){
             scale[1] = scaleXY;
             gl.uniform2fv(cs.origin, origin);
             gl.uniform2fv(cs.scale, scale);
-            gl.uniform3fv(cs.desc, gridAlphas);
+            gl.uniform4fv(cs.desc, gridAlphas);
             gl.drawArrays(gl.TRIANGLES, 0, 6);
         },
         
