@@ -1,5 +1,28 @@
 
 // curly braces are just from my folding system
+{webGLHelper.addShader("backgroundImage",`
+            #type vertex;    
+            #name backgroundImage;
+            #attribute vec4 position;
+            #attribute vec2 texCoord;  
+            varying vec2 tex;  
+            #uniform vec2 screen;
+            //#uniform vec2 origin; // origin is ignored..
+            #uniform vec2 scale;
+            void main() {
+                gl_Position = position * vec4(scale.x,-(screen.y / screen.x) * scale.y,1.0,1.0);
+                tex = texCoord;
+            }`);}
+{webGLHelper.addShader("backgroundImage",`
+            #type fragment;      
+            #name backgroundImage;
+            precision mediump float;
+            #uniform sampler2D texture;
+            varying vec2 tex;  
+            void main() {
+                gl_FragColor = texture2D(texture,tex);
+            }`);
+}
 
 {webGLHelper.addShader("fillScreen",`
             #type vertex;    
@@ -93,14 +116,12 @@
     ]
 )}           
 {webGLHelper.addShader("grid",`
-
             #type vertex;      
             #name grid;
             #attribute vec4 position; // base quad
             #attribute vec2 texCoord;
             #uniform vec2 origin;  // origin in pixels
             varying vec2 tex;    
-   
             void main() {
                 gl_Position = position;
                 tex = vec2(1.0,-1.0) * texCoord + origin;
@@ -112,18 +133,12 @@
             precision mediump float;
             #uniform sampler2D texture;  
             varying vec2 tex;  // incoming texture coords
-
             // input colours checker1,checker2,gridcolour,extra (checkerAlpha1,checkerAlpha2,lineAlpha)
             #uniform vec3 colours[5];
-            #uniform vec2 scale;   // scale
+            //#uniform vec2 scale;   // scale
             #uniform vec2 screen;  // inverse screen resolution
             #uniform vec4 desc; // grid size, alpha fades,
-
-
-
             const vec2 one = vec2(1.0,1.0);
-
-            
             void main(){
                 vec4 checkerColour1 = vec4(colours[0],colours[3].x);
                 vec4 checkerColour = vec4(colours[1],colours[3].y);
@@ -136,7 +151,6 @@
                 vec2 m2  = m1 * desc.w ;       
                 vec2 gl1;  // grid lines 0-2;   
                 a = desc.y;   
-                
                 // find horizontal and vertical grid lines. 
                 if(colours[3].z <= 1.0){ // only 2 levels of lines
                     gl1 = (one - step(lineWidth, mod(tex, m1))) * a;
@@ -150,13 +164,10 @@
                     a = 1.0 - a;
                     gl1 += (one - step(lineWidth, mod(tex, m2))) * a;
                 }
-                
-
                 // get grid pattern
                 vec2 aa1 = step(m / 2.0 , mod(tex, m));
                 vec2 aa2 = step(m1 / 2.0, mod(tex, m1));
                 vec2 aa3 = step(m2 / 2.0, mod(tex, m2));
-                
                 // mix grid pattern
                 rCol = mix(
                         checkerColour, 
@@ -166,7 +177,6 @@
                 // mix  in grid lines
                 gl_FragColor = mix(rCol, gridColour, max(gl1.x, gl1.y));
             }
-        
         `);}
 {webGLHelper.addShader("grid1",`
             #type vertex;      
@@ -387,8 +397,70 @@
                }
             }`);}
 {webGLHelper.addShader("batchSprite",`
+            #%batchCount = 640;   // pre compile settable constant default
+            #%spriteCount = 21;   // pre compile settable constant default
             #type vertex;      
             #name batchSprite;
+            #attribute vec4 position;
+            #attribute vec2 texcoord;
+            // 0 pos, 1 scale, 2 textPos, 3 textScale, 4 (rotation,screenAspect), 5 (alpha,scale), 6 center, 7 tile
+            #uniform vec2 desc[8];   
+            #uniform float pos[<%batchCount>];  // preCompile default value. Must have a default
+
+            #uniform ivec4 loc[<%spriteCount>]; // preCompile default value. Must have a default
+            const vec2 topLeft = vec2(-0.5,-0.5);
+            const vec2 topRight = vec2(0.5,-0.5);
+            const vec2 bottomRight = vec2(0.5,0.5);
+            const vec2 bottomLeft = vec2(-0.5,0.5);
+            varying vec2 v_texcoord;
+            varying float alpha;
+            void main() {
+               vec2 vt; 
+               int  p = int(floor(position.y)); // vertex position 0 = top left around 1,2, 3= to bottom left
+               int ind = int(floor(position.x)) * 5; // sprite screen position index
+               int spriteLoc = int(pos[ind + 4]); // sprite sheet position index
+               vec2 tex = vec2(float(loc[spriteLoc].x),float(loc[spriteLoc].y));
+               if (p == 0) {
+                   vt = topLeft;
+               } else if ( p == 1) {
+                   vt = topRight;
+                   tex.x += float(loc[spriteLoc].z);
+               } else if ( p == 2) {
+                   vt = bottomRight;
+                   tex.x += float(loc[spriteLoc].z);
+                   tex.y += float(loc[spriteLoc].w);
+               } else {
+                   vt = bottomLeft;
+                   tex.y += float(loc[spriteLoc].w);
+               }
+               alpha = desc[5].x;
+               v_texcoord = tex / desc[7];  // texture scaling             
+    
+               vec2 posV = vt  * pos[ind + 2] * 2.0 * desc[5].y;      
+               vec2 rot = vec2(cos(pos[ind + 3]),sin(pos[ind + 3]));
+               vt.x = posV.x * rot.x + posV.y * rot.y  + (pos[ind] - 0.5) * 2.0;
+               vt.y = posV.x * (-rot.y * desc[4].y)  + posV.y * rot.x * desc[4].y + (pos[ind + 1] + 0.5) * 2.0;               
+               gl_Position  = vec4(vt, position.zw);
+
+               
+            }`);}
+{webGLHelper.addShader("batchSprite",`
+            #type fragment;
+            #name batchSprite;
+            precision mediump float;
+            varying vec2 v_texcoord;
+            varying float alpha;
+            uniform sampler2D texture;
+            void main() {
+               if(alpha >= 1.){
+                    gl_FragColor = texture2D(texture, v_texcoord);
+               }else{
+                    gl_FragColor = texture2D(texture, v_texcoord) * vec4(1.0 , 1.0 , 1.0 , alpha);
+               }
+            }`);}
+{webGLHelper.addShader("batchTileSprite",`
+            #type vertex;      
+            #name batchTileSprite;
             #attribute vec4 position;
             #attribute vec2 texcoord;
             // 0 pos, 1 scale, 2 textPos, 3 textScale, 4 (rotation,screenAspect), 5 (alpha,scale), 6 center, 7 tile
@@ -409,42 +481,24 @@
                int  p = int(floor(position.y));
                int ind = int(floor(position.x)) * 5;
                int spriteLoc = int(pos[ind +4]);
-               if(desc[6].x > 0.0){
-                   tex = vec2(float(loc[spriteLoc].x),float(loc[spriteLoc].y));
-                   if(p == 0){
-                        vt = topLeft;
-                   }else if( p == 1){
-                       tex.x += float(loc[spriteLoc].z);
-                       vt = topRight;
-                   }else if( p == 2){
-                       tex.x += float(loc[spriteLoc].z);
-                       tex.y += float(loc[spriteLoc].w);
-                       vt = bottomRight;
-                   }else{
-                       tex.y += float(loc[spriteLoc].w);
-                       vt = bottomLeft;
-                   }
+               tex = vec2(0,0);
+               tex.x = floor(mod(float(spriteLoc),float(loc[0].x))) * float(loc[0].z);
+               tex.y = floor(floor(float(spriteLoc)/float(loc[0].x))) * float(loc[0].z);
+                if(p == 0){
+                    vt = topLeft;
+               }else if( p == 1){
+                   tex.x += float(loc[0].z);
+                   vt = topRight;
+               }else if( p == 2){
+                   tex.x += float(loc[0].z);
+                   tex.y += float(loc[0].z);
+                   vt = bottomRight;
                }else{
-                   tex = vec2(0,0);
-                   tex.x = floor(mod(float(spriteLoc),float(loc[0].x))) * float(loc[0].z);
-                   tex.y = floor(floor(float(spriteLoc)/float(loc[0].x))) * float(loc[0].z);
-                    if(p == 0){
-                        vt = topLeft;
-                   }else if( p == 1){
-                       tex.x += float(loc[0].z);
-                       vt = topRight;
-                   }else if( p == 2){
-                       tex.x += float(loc[0].z);
-                       tex.y += float(loc[0].z);
-                       vt = bottomRight;
-                   }else{
-                       tex.y +=float(loc[0].z);
-                       vt = bottomLeft;
-                   }           
-               }
+                   tex.y +=float(loc[0].z);
+                   vt = bottomLeft;
+               }           
                tex /= desc[7];               
-               //vec2 posV = (vt +  desc[6]) * pos[ind + 2] * 2.0 * desc[5].y;      
-               vec2 posV = (vt - vec2(0.5,0.5)) * pos[ind + 2] * 2.0 * desc[5].y;      
+               vec2 posV = (vt +  desc[6]) * pos[ind + 2] * 2.0 * desc[5].y;      
                vec2 rot = vec2(cos(pos[ind + 3]),sin(pos[ind + 3]));
                tMat[0][0] = rot.x;
                tMat[1][0] = rot.y;
@@ -454,9 +508,9 @@
                v_texcoord = tex;
                alpha = desc[5].x;
             }`);}
-{webGLHelper.addShader("batchSprite",`
+{webGLHelper.addShader("batchTileSprite",`
             #type fragment;
-            #name batchSprite;
+            #name batchTileSprite;
             precision mediump float;
             varying vec2 v_texcoord;
             varying float alpha;
@@ -467,7 +521,7 @@
                }else{
                     gl_FragColor = texture2D(texture, v_texcoord) * vec4(1.0 , 1.0 , 1.0 , alpha);
                }
-            }`);}
+            }`);}            
 {webGLHelper.addShader("tileGrid",`
             #type vertex;      
             #name tileGrid;
@@ -481,10 +535,9 @@
             #uniform vec2 tiles[3]; // tile (width,height),map (width,height),tile pixel relative (width,height)
             void main() {
                 gl_Position = position;
-                vec2 o =origin * screen;
-                tex = vec2(1.0,-1.0)*texCoord+ o;
-                mapTex = tex / screen / tiles[0] / tiles[1] * scale ;
-                tex *= tiles[2] * scale ;
+                vec2 texC = vec2(1.0,-1.0) * texCoord + origin;
+                mapTex = (texC / screen / tiles[0] / tiles[1]) * scale;
+                tex = texC * tiles[2] * scale;
             }
         `);}
 {webGLHelper.addShader("tileGrid",`
@@ -495,9 +548,7 @@
             #uniform sampler2D map;  
             varying vec2 tex;  // incoming texture coords
             varying vec2 mapTex; // incoming map coords    
-            
             #uniform vec2 tileSize[2]; // tiles count (width,height),tile (width,height)
-
             void main(){
                 vec4 t = floor(texture2D(map,mapTex)*256.0);
                 vec2 tile = vec2(
@@ -505,9 +556,124 @@
                             floor(t.x / tileSize[0].x)
                             ) * tileSize[1];
                 gl_FragColor = texture2D(texture,mod(tex, tileSize[1]) + tile);
-                
-
             }
-        
         `);
 }
+{webGLHelper.addShader("smartTileGrid",`
+            #type vertex;      
+            #name tileGrid;
+            #attribute vec4 position; // base quad
+            #attribute vec2 texCoord;
+            varying vec2 tex;    
+            varying vec2 mapTex;    
+            #uniform vec2 scale;   // scale
+            #uniform vec2 origin;  // origin in pixels
+            #uniform vec2 screen;  // inverse screen resolution
+            #uniform vec2 tiles[3]; // tile (width,height),map (width,height),tile pixel relative (width,height)
+            void main() {
+                gl_Position = position;
+                tex = vec2(1.0,-1.0) * texCoord + origin;
+                mapTex = tex / screen / tiles[0] / tiles[1] * scale ;
+                tex *= tiles[2] * scale ;
+            }
+        `);}
+{webGLHelper.addShader("smartTileGrid",`
+            #type fragment;      
+            #name tileGrid;
+            precision mediump float;
+            #uniform int fileInfo[256]; // Max of 256 smart tiles
+            #uniform sampler2D texture;  
+            #uniform sampler2D map;  
+            varying vec2 tex;  // incoming texture coords
+            varying vec2 mapTex; // incoming map coords    
+            #uniform vec2 tileSize[2]; // tiles count (width,height),tile (width,height)
+            void main(){
+                vec4 t = floor(texture2D(map,mapTex)*256.0);
+                vec2 tile = vec2(
+                            floor(mod(t.x, tileSize[0].x)),
+                            floor(t.x / tileSize[0].x)
+                            ) * tileSize[1];
+                gl_FragColor = texture2D(texture,mod(tex, tileSize[1]) + tile);
+            }
+        `);
+}
+{webGLHelper.addShader("frameBufferTestA",`
+            #type vertex;      
+            #name frameBufferTestA;
+            #attribute vec4 position; // base quad
+            #attribute vec2 texCoord;
+            varying vec2 tex;    
+            void main() {
+                gl_Position = position;
+                tex = texCoords ;
+            }
+        `);
+}
+{webGLHelper.addShader("frameBufferTestA",`
+            #type fragment;      
+            #name frameBufferTestA;
+            precision mediump float;
+            #uniform sampler2D texture;  
+            varying vec2 tex;  // incoming texture coords
+
+            #uniform vec2 size;
+
+            const float F = 0.0545;
+            const float K = 0.062;
+            const float D_a = 0.2;
+            const float D_b = 0.1;
+
+            const float TIMESTEP = 1.0;
+
+            void main() {
+                vec2 p = gl_FragCoord.xy;
+                vec2 n = p + vec2(0.0, 1.0);
+                vec2 e = p + vec2(1.0, 0.0);
+                vec2 s = p + vec2(0.0, -1.0);
+                vec2 w = p + vec2(-1.0, 0.0);
+
+                vec2 val = texture2D(texture, p / size).xy;
+                
+                vec2 laplacian = texture2D(texture, n / size).xy
+                                    + texture2D(texture, e / size).xy
+                                    + texture2D(texture, s / size).xy
+                                    + texture2D(texture, w / size).xy
+                                    - 4.0 * val;
+
+                vec2 delta = vec2(D_a * laplacian.x - val.x*val.y*val.y + F * (1.0-val.x),
+                    D_b * laplacian.y + val.x*val.y*val.y - (K+F) * val.y);
+
+                gl_FragColor = vec4(val + delta * TIMESTEP, 0, 0);
+            }            
+        `);
+}
+{webGLHelper.addShader("frameBufferTestB",`
+            #type vertex;      
+            #name frameBufferTestB;
+            #attribute vec4 position; // base quad
+            #attribute vec2 texCoords;
+            varying vec2 tex;    
+            void main() {
+                gl_Position = position;
+                tex = texCoords ;
+            }
+        `);
+}
+{webGLHelper.addShader("frameBufferTestB",`
+            #type fragment;      
+            #name frameBufferTestB;
+            precision mediump float;
+            #uniform sampler2D texture;
+            varying vec2 tex;  
+            
+            #uniform vec2 size;
+
+            const float COLOR_MIN = 0.2;
+            const float COLOR_MAX = 0.4;
+
+            void main() {
+                float v = (COLOR_MAX - texture2D(texture, gl_FragCoord.xy / size).y) / (COLOR_MAX - COLOR_MIN);
+                gl_FragColor = texture2D(texture,tex);//vec4(v, v, v, 0.5);
+            }`);
+}
+

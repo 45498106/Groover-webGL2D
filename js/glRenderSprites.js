@@ -24,7 +24,7 @@ var spriteRender = (function(){
     var batched = 0;
     var batchSpritePosBuffer;
     var batchSpritePos =  webGLHelper.createQuickSpriteArray(batchSize);
-    var batchSpritePrep = function(){
+    var batchSpritePrep = function(data){
         setBuffer(batchSpritePosBuffer,cs.position,batchSpritePos);   
         gl.uniform4iv(cs.loc,spriteLocations);  
         batched = 0;
@@ -56,6 +56,9 @@ var spriteRender = (function(){
             cs = webGLHelper.createProgram(gl,"lines");
             shaders[cs.name] = cs;
             cs.prep = linePrep;
+            cs = webGLHelper.createProgram(gl,"batchTileSprite");
+            shaders[cs.name] = cs;
+            cs.prep = batchSpritePrep;
             cs = webGLHelper.createProgram(gl,"batchSprite");
             shaders[cs.name] = cs;
             cs.prep = batchSpritePrep;
@@ -76,10 +79,10 @@ var spriteRender = (function(){
                 spr = sprite.sprites;          
                 if(sprite.tiles !== undefined){
                     spriteLocations= sprite.locations;
-                    spriteUniform[12] = -1 ;
+                    //spriteUniform[12] = -1 ;
                 }else if(sprite.sprites !== undefined){
                     spriteLocations= sprite.locations;
-                    spriteUniform[12] = sprite.sprites.length ;
+                    //spriteUniform[12] = sprite.sprites.length ;
                 }
                 spriteUniform[14] = sw;
                 spriteUniform[15] = sh;    
@@ -116,13 +119,13 @@ var spriteRender = (function(){
             if(batched > 0){
                 gl.uniform2fv(cs.desc, spriteUniform);
                 gl.uniform1fv(cs.pos, batch);
-                gl.drawArrays(gl.TRIANGLES, 0, (batched / 4 )*6);
+                gl.drawArrays(gl.TRIANGLES, 0, (batched / 5 )*6);
                 batched = 0;
             }            
         },
         drawSpriteBatch : function (index,x,y,scale,rot,alpha){
             var su = spriteUniform;
-            var s = spr[index%spr.length];
+            var s = spr[index];
             if(batched === 0){
                 su[4] = s[4];
                 su[5] = s[5];
@@ -137,7 +140,7 @@ var spriteRender = (function(){
             batch[batched++] = y/-h;
             batch[batched++] = s[2]/w*scale;
             batch[batched++] = rot;      
-            batch[batched++] = Math.floor(index);      
+            batch[batched++] = index;      
             if(batched === batchSize*5){
                 gl.uniform2fv(cs.desc, su);
                 gl.uniform1fv(cs.pos, batch);

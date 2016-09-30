@@ -140,15 +140,16 @@ var canvasMouse = (function(){
         if(ctx === undefined){
             return;
         }
+        requestAnimationFrame(update);
         if(pause){
-            requestAnimationFrame(update); 
+            return;
+            
         }
         API.globalTime = timer;
         var len = renderStack.length;
         for(i = 0; i < len; i ++){
             renderStack[i]();
         }
-        requestAnimationFrame(update); 
     }
     var API = {
         onresize: null,

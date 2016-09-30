@@ -1,6 +1,75 @@
 var spriteTile = (function(){
-
+    var vetGL = function(gl,who){
+        if(gl === undefined || gl === null ){
+            if(canvasMouse !== undefined && 
+                canvasMouse.webGL !== undefined &&
+                canvasMouse.webGL !== null &&
+                canvasMouse.webGL.gl !== undefined &&
+                canvasMouse.webGL.gl !== null){
+                return canvasMouse.webGL.gl;
+             }
+        }else{
+            return gl;
+        }
+        throw new ReferenceError(who," can not find a webGL context.");
+    }
+    var updateTileMap = function(gl){
+        webGLHelper.updateTexture(gl,this);
+    }
+    
     var API = {
+        loadImageSet : function(imageSet){
+            var i,count;
+            var load = function(image){
+                imageSet.textures[this.name] = webGLHelper.createTexture(canvasMouse.webGL.gl,this);
+                count -= 1;
+                if(count === 0){
+                    if(typeof imageSet.allLoaded === "function"){
+                        imageSet.allLoaded();
+                    }
+                    imageSet.ready = true;
+                }
+            }
+            count = 0;
+            imageSet.images = {};
+            imageSet.textures = {};
+            for(i = 0; i < imageSet.urls.length; i ++){
+                imageSet.images[imageSet.names[i]] = imageLoader.loadImage(imageSet.urls[i],load);
+                imageSet.images[imageSet.names[i]].name = imageSet.names[i];
+                count += 1;
+                logs.log("loading image : " + imageSet.names[i]);
+            }
+            imageSet.ready = false;
+        },
+        createTileMap : function(width,height,maxTiles,gl){
+            var tileMap;
+            var map;
+            gl = vetGL(gl,"createTileMap");
+            tileMap = {};
+            if(maxTiles <= 256){
+                map = new Uint8Array(width * height);
+                tileMap.format = gl.LUMINANCE;
+                tileMap.bytesPerTile = 1;
+            }else
+            if(maxTiles <= 256 * 256){
+                throw new Error("16 bit or greater tile maps currently unsupported. Stay tuned!");                
+            }else
+            if(maxTiles <= 256 * 256 * 256){
+                throw new Error("16 bit or greater tile maps currently unsupported. Stay tuned!");                
+            }
+            for(var i = 0; i < width * height * tileMap.bytesPerTile; i ++){
+                map[i] = Math.floor(Math.random() * maxTiles);
+            }
+            tileMap.maxTiles = maxTiles;
+            tileMap.width = width;
+            tileMap.height = height;
+            tileMap.texture = webGLHelper.createImageFromData(gl,width,tileMap.format,map);
+            tileMap.ready = true;   
+            tileMap.map = map;   
+            tileMap.update = updateTileMap;
+            
+            return tileMap;
+        },
         loadMapTiles : function(tileInfo){
             var loadMap = function(){
                 var can = document.createElement("canvas");

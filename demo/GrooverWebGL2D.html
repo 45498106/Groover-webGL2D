@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html id="topDoc">
+    <head>
+        <meta http-equiv="Content-Type" content="text/html;charset=ISO-8859-8">
+        <title>Groover WebGL2D</title>
+        <meta name="keywords" content="Canvas, 2D, webGL, webGL2, JavaScript, Mark Spronck, Groover, Groover-WebGL2D" />
+        <meta name="description" content="Example use of Groover-WebGL2D" />
+        <meta name="author" content="Mark Spronck" />
+        <link rel="stylesheet" type="text/css" href="grooverWebGL2D.css">
+        <script src = "../extra/canvasMouse.js"></script>
+        <script src = "../js/glHelper.js"></script>
+        <script src = "../js/glImageLoader.js"></script>
+        <script src = "../js/glSpriteTile.js"></script>
+        <script src = "../js/glShaders.js"></script>
+        <script src = "../js/glRenderSprites.js"></script>
+        <script src = "../js/glRenderFullScreen.js"></script>
+        <script src = "../js/glRenderTargets.js"></script>
+        
+    </head>
+    <body>
+    <div class = "head">
+    
+    </div>
+    <div class="title">
+        <div class="nameT">Groover-WebGL2D</div>
+        <div class="descT">High performance WebGL for 2D games and visualisations.</div>
+        <p>Groover-WebGL2D is under construction.... Contact <a href="mailto:markspronck@gmail.com?subject=Groover-WebGL2D">Mark Spronck</a>  </p>
+    </div>    
+
+    <div class = "titleBlurb">
+        <!--<h3>Groover-WebGL2D is under construction....</h3>-->
+        <div class="mainMenu" id="uiContainer"></div>
+        <p> Note that these are demos only and currently there is only the basic API. I will in time create a simpler API that will hide some of the complexities involved. Feel free to contact me if you have questions or suggestions.</p>
+      
+        
+    </div>
+    
+    
+    <div class = "blurb pos1" id="gridBlurbElement">
+    <h1>Grid shader.</h1>
+    <img class = "bImage" src = "../Images/Grid.png">
+        <p>Grid shader is a one pass high performance grid that can be used for a variety of 2D applications. Zoom and pan</p>
+        <p>Currently the grid axis numbers and ticks are render via 2D canvas context, but I do plan on creating a separate shader to do this job in the future.</p>
+        <p>The grid can be customised, checker colour and alpha, grid line width, colour, and alpha. Lines can be displayed at 2 or 3 levels. Grid interval from 2 to 16.</p>
+        <p>Currently the grid is zooming by scaling i the vertex shader, this quickly reaches the floating point limits of the shader. Upcoming versions will be an infinite Zoom (well to the 64bit floating point limit of javascript).</p>
+        
+        
+        <p><a href = "GridDemo.html">Try the demo.</a></p>
+    </div>
+    
+    
+    <div class = "blurb pos3" id="spriteBlurbElement">
+    <h1>Batched Sprite Shader.</h1>
+    <img class = "bImage" src = "../Images/Sprites.png">
+        <p>The aim of this shader is to render as many sprites as possible from within JavaScript. </p>
+        <p>Each sprite can be scaled, rotated, positioned and alpha blended. Sprite image source can be from fixed tile or irregular sprite sheets.</p>
+        <p>For arcade style games performance is very important. The 2D canvas API is an excellent graphics interface, easy to use flexible and fast, or should I use the words "reasonably fast". For 2D canvas rendering the same sprites I can on my machine get around 1000 on Chrome and 2000 on Firefox befor the frame rate drops below 60fps.</p>
+        <p>This shader easily out performs the 2D render by a factor of 10. The limiting factor is currently my old GPU reaching its pixel rendering limit. When rendering small sprites only I get 32,000 sprites at 60fps, when I render the full set the best I get is 16,000 at 60fps.</p>
+        <p><a href = "SpriteDemo.html">Try the demo.</a> and see how many sprites your device can manage. The best I have managed is 32,000 sprites at 60FPS (Note this is a bare bones test) </p>
+        
+    </div>
+    
+    
+    <div class = "blurb pos2" id="tileBlurbElement">
+    <h1>Tile Map Shader.</h1>
+    <img class = "bImage" src = "../Images/Tiles.png">
+        <p>Realtime tile map render in one pass. Renders fullscreen tile map. Map sizes are only limited by the max texture size of the GPU (which can vary between GPUs). Max tile count per pass is as many as you can fit on a single image. Will render a full screen 8 by 8 pixels tile map as quickly as a full screen 128 by 128 tile map.</p>
+        <p>With the speed of this tile map shader you can have many maps rendered at once. Each map can be scaled and translated to create awesome parallaxed tile maps.</p>
+        <p>Demo shows a 8 by 8 tiles on a map 1024 by 1024. Click and drag to paint onto the tile map.</p>
+        <p>Controls. Mouse wheel to zoom in and out, right click drag to pan.</p>
+        <p><a href = "TileDemo.html">Try the demo.</a></p>
+    </div>
+
+    <div class = "blurb pos4" id="frameBufferElement">
+    <h1>Frame buffer.</h1>
+    <img class = "bImage" src = "../Images/Tiles.png">
+        <p>Experimental. Demonstrates render to texture.</p>
+        <p><a href = "frameBufferDemo.html">Goto page</a></p>
+    </div>    
+    
+    <div class = "blurb pos5" id="templateElement">
+    <h1>tempate.</h1>
+    <img class = "bImage" src = "../Images/Tiles.png">
+        <p>just a template</p>
+        <p><a href = "template.html">Goto page</a></p>
+    </div>
+
+    <div class="ui" >
+
+    </div>
+    
+    <p id="githubElementID" style="position: absolute;z-index: 300;top : 1800px;">Visit Github to get the <a href="https://github.com/blindman67/Groover-webGL2D">Source code</a> and more.<p>
+    
+    <script src="grooverWebGL2DStart.js"></script>
+    </body>
+</html>

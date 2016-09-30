@@ -1,3 +1,7 @@
+// The simple rule for using this interface. NEVER USE WHILE RENDERING
+// This is only for set up and when time does not matter. 
+
+
 var webGLHelper = (function(){
     /* ***************************************************************************************************
     The following functions are helpers for Shader variables. Rather than having to type all the mumbo
@@ -38,6 +42,35 @@ var webGLHelper = (function(){
             return str;
         });
         return items;
+    }
+    function setConstants(script,consts = []){
+        var foundC = [];
+        script = script.replace(new RegExp("#%.+;","g"), str => {
+            var con = str.substr(2,str.length-3).replace(/ /g,"").split("=");
+            foundC.push({name : con[0], value : con[1]});
+
+            return "";
+        });
+        foundC.forEach(fc => {
+            consts.forEach(c => {
+                if(fc.name === c.name){
+                    fc.value = c.value;
+                }
+            });
+        });
+        consts.forEach(c => {
+            script = script.replace("<%"+c.name+">",c.value);
+
+        });
+        foundC.forEach(c => {
+            script = script.replace("<%"+c.name+">",c.value);
+
+        });
+        return script;
+            
+            
+        
+        
     }
     // get # delimited variables from shader source
     function getVariables(script,variables){
@@ -115,9 +148,19 @@ var webGLHelper = (function(){
         });
         return error;
     }
+     function vetGL(gl,functionName){
+         if(gl === undefined){
+             if(canvasMouse === undefined || canvasMouse.webGL === undefined || canvasMouse.webGL.gl === undefined){
+                 throw new ReferenceError("webGLHelper." + functionName + " requires a valid gl context");
+             }
+             return canvasMouse.webGL.gl;
+         }
+         return gl;
+     }
      var API = {
         createTexture : function (gl,image){
             var texture;
+            gl = vetGL(gl,"createTexture");
             gl.bindTexture(gl.TEXTURE_2D, texture = gl.createTexture());
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
@@ -127,6 +170,7 @@ var webGLHelper = (function(){
             return texture;
         },
         createImageFromData : function(gl,width,format,data){
+            gl = vetGL(gl,"createImageFromData");
             var pixelWidth = 4;
             switch(format){
                 case gl.RGBA:
@@ -150,7 +194,34 @@ var webGLHelper = (function(){
             gl.texImage2D(gl.TEXTURE_2D, 0, format, width, height, 0, format, gl.UNSIGNED_BYTE, data);
             return texture;
         },
+        createEmptyTexture : function(gl,width,height){
+            var texture;
+            gl = vetGL(gl,"createEmptyTexture");
+            
+            gl.bindTexture(gl.TEXTURE_2D, texture = gl.createTexture());
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+            return texture;
+        },
+        createFrameBuffer : function(gl,width,height){
+            var frameBuffer;
+            gl = vetGL(gl,"createFrameBuffer");
+            gl.bindFramebuffer(gl.FRAMEBUFFER, frameBuffer = gl.createFramebuffer());
+            frameBuffer.width = Math.floor(width);
+            frameBuffer.height = Math.floor(height);   
+            return frameBuffer;
+        },
+        updateTexture : function(gl,spriteTile){
+            gl = vetGL(gl,"updateTexture");
+            gl.bindTexture(gl.TEXTURE_2D, spriteTile.texture);
+            gl.texImage2D(gl.TEXTURE_2D, 0, spriteTile.format, spriteTile.width,spriteTile.height,0,spriteTile.format, gl.UNSIGNED_BYTE, spriteTile.map);            
+            
+        },
         createCompositeFilters : function(gl){
+            gl = vetGL(gl,"createCompositeFilters");
             gl.composite = {};
             gl.composite.over = function(){
                 gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
@@ -163,6 +234,12 @@ var webGLHelper = (function(){
             };
             gl.enable(gl.BLEND);
         },
+        defaultBindings : function(gl){ 
+            gl = vetGL(gl,"defaultBindings");
+            gl.bindTexture(gl.TEXTURE_2D, null);
+            gl.bindRenderbuffer(gl.RENDERBUFFER, null);
+            gl.bindFramebuffer(gl.FRAMEBUFFER, null);                
+        },        
         createQuad : function (size = 1,offset = 0,right,bottom){
             var top,left,right,bottom;
             if(right !== undefined){
@@ -200,6 +277,7 @@ var webGLHelper = (function(){
             return API.createBatchSpriteIndexingVerts(quadCount);
         },
         addVertexBuffer : function (gl,name, size, data){
+            gl = vetGL(gl,"addVertexBuffer");         
             gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
             if(data !== undefined){
                 gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
@@ -208,12 +286,14 @@ var webGLHelper = (function(){
             gl.vertexAttribPointer(name, size, gl.FLOAT, false, 0, 0);
         },
         setBuffer : function (gl, buffer,name, data){
+            gl = vetGL(gl,"setBuffer");               
             gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
             gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
             gl.enableVertexAttribArray(name);
             gl.vertexAttribPointer(name, size, gl.FLOAT, false, 0, 0);
         },
         createBuffer : function (gl, data,name){
+            gl = vetGL(gl,"createBuffer");                
             var buffer = gl.createBuffer();
             gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
             gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
@@ -262,7 +342,14 @@ var webGLHelper = (function(){
             })
             return programSource;
         },        
-        createProgram : function (gl, pname) {// creates vertex and fragment shaders
+        doesProgramSourceExist  : function(name){
+            if( programSource[name] !== undefined){
+                return true;
+            }
+            return false;
+        },
+        createProgram : function (gl, pname, consts) {// creates vertex and fragment shaders
+            gl = vetGL(gl,"createProgram");            
             var shaders = [];
             var variables = {};
             var s = programSource[pname];
@@ -274,7 +361,8 @@ var webGLHelper = (function(){
                 if (script !== undefined) {
                     currentLinkerWorkingOn = script;
                     var shader = gl.createShader(gl[script.type]);
-                    var source = getVariables(script.source,variables);
+                    var source = setConstants(script.source,consts);
+                    source = getVariables(source,variables);
                     gl.shaderSource(shader, source);
                     gl.compileShader(shader);
                     if(report(gl,shader,"shader", n, source)){throw new ReferenceError("WEBGL Shader error : Program : '"+pname+"' shader : " + n); }

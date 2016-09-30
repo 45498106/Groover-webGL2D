@@ -1,7 +1,7 @@
 var lastMx;
 var lastMy;
 var gameSprites = {
-    url : "GrooverCut92692.png", // image has GrooverSprite data encoded in it but that is not used in this demo
+    url : "../Images/GrooverCut92692.png", // image has GrooverSprite data encoded in it but that is not used in this demo
     image : null,
     texture : null,
     sprites : [ // location of sprites in image
@@ -110,6 +110,32 @@ if (Array.prototype.fastStack === undefined) {
             this.fLength = count-tail;
         }
     });
+    Object.defineProperty(Array.prototype, 'fEachCustom', {
+        writable : false,
+        enumerable : false,
+        configurable : false,
+        value : function (func) {
+            var w = canvasMouse.canvas.width + 100;
+            var h = canvasMouse.canvas.height + 100;              
+            var i, len;
+            var r;
+            len = this.fLength;
+            i = 0;
+            tail = 0;
+            count = 0;
+            while( i < len ) {
+                r = this[i];
+                r.x += r.dx;
+                r.y += r.dy;
+                r.r += r.dr;
+                r.x %= w;
+                r.y %= h;
+                spriteRender.drawSpriteBatch(r.sprite,r.x-50,r.y-50,r.s,r.r,1);
+                i++;
+            }
+            
+        }
+    });
     Object.defineProperty(Array.prototype, 'fEachQ', {
         writable : false,
         enumerable : false,
@@ -171,7 +197,7 @@ var rock = {
     dead : false,
 };
 var rocks = []; // array of rocks   
-rocks.fastStack(10000,rock,"dead");  
+rocks.fastStack(1024*8*8,rock,"dead");  // thought 8000 would max out then 10000 now up to 16000 and still at 60FPS and there is some room for more optimisation. 32000 WOW 64000 :( Not on my machine 
 var rockCount = 0;
 function addRockCount(number){
     while(number > 0){
@@ -199,7 +225,8 @@ function addRock(){
     r.dead = false;
 }
 function updateAndDisplayRocks(){
-    var w = canvasMouse.canvas.width + 100;
+    rocks.fEachCustom(); /* to get a few more in */
+    /*var w = canvasMouse.canvas.width + 100;
     var h = canvasMouse.canvas.height + 100;    
     rocks.fEach(r => {
        r.x += r.dx;
@@ -208,7 +235,7 @@ function updateAndDisplayRocks(){
        r.x %= w;
        r.y %= h;
        spriteRender.drawSpriteBatch(r.sprite,r.x-50,r.y-50,r.s,r.r,1);
-    });
+    });*/
     
 }
 
@@ -243,31 +270,23 @@ var UIColour = "black";
 var countOutInfo = 40;
 var infoCount = 0;
 var gridSteps = 4;
-var lastTime = 0;
-var frameRate = "";
-var lastFrameRate;
+
 function renderer(){
-    var time = canvasMouse.globalTime - lastTime;
-    frameRate = (1000 / time).toFixed(0);
-    if(frameRate !== lastFrameRate){
-        updateStats();
-    }
-    lastFrameRate = frameRate;
-    lastTime = canvasMouse.globalTime;
-    var canvas = canvasMouse.canvas;
-    var ctx = canvasMouse.ctx;
-    var w = canvas.width;
-    var h = canvas.height;
+
+    //var canvas = canvasMouse.canvas;
+    //var ctx = canvasMouse.ctx;
+    //var w = canvas.width;
+    //var h = canvas.height;
     var gl = canvasMouse.webGL.gl;
-    var mouse = canvasMouse.mouse;
-    gl.clearColor(0.0, 0.0, 0.0, 0.0);
-    gl.clear(gl.COLOR_BUFFER_BIT);
+    //var mouse = canvasMouse.mouse;
+    //gl.clearColor(0.0, 0.0, 0.0, 0.0);
+    //gl.clear(gl.COLOR_BUFFER_BIT);
     gl.composite.over();
     gl.enable(gl.BLEND);
 
 
-    mouseXR = ((mouse.x-originX.value)/scale.value);
-    mouseYR = ((mouse.y-originY.value)/scale.value);
+   // mouseXR = ((mouse.x-originX.value)/scale.value);
+   // mouseYR = ((mouse.y-originY.value)/scale.value);
     originX.update();
     originY.update();
     scale.update();
@@ -284,8 +303,8 @@ function renderer(){
     
     
     
-    lastMx = mouse.x;
-    lastMy = mouse.y;
+    //lastMx = mouse.x;
+    //lastMy = mouse.y;
 
 
     
@@ -298,15 +317,22 @@ function resizedCanvas(){
     spriteRender.canvasResized(canvasMouse.webGL);
     originX.value = (canvasMouse.canvas.width/2)-mouseRX*scale.value;
     originY.value = (canvasMouse.canvas.height/2)-mouseRY*scale.value;
-    drawCanvasTitle();
+
 
 }
 
-var styles = [
-    {   name : "Reset", 
-        data : "reset",
+var styles = [{   
+        name : "Reset", 
+        func : function(){
+            rocks.fEach(r => { r.dead = undefined; });
+            rockCount = 0;
+            addRockCount(128);     
+        }            
     },{
         name : "Double sprite count",
+        func : function(){
+            addRockCount(rockCount);            
+        },
         data : "double",
     },{
         name : "Home",
@@ -314,43 +340,35 @@ var styles = [
     }    
     
 ]
-function setStyle(event){
-    if(this.dataStyle.data === "double"){
-        addRockCount(rockCount);
-        updateStats();        
-    }else if(this.dataStyle.data === "reset"){
-        rocks.fEach(r => { r.dead = undefined; });
-        rockCount = 0;
-        addRockCount(128);
-        updateStats();        
-    }
-    if(countOutInfo !== -1){
-        countOutInfo = -1;
-        document.getElementById("infoContainer").className = "hide";
-        infoCount += 1;
-        updateStats();      
-    }
+function UIClicked(event){
+    event.stopPropagation();
+    if(typeof this.dataDetails.func === "function"){
+        this.dataDetails.func();
+    }    
+    updateStats();        
+
     
 }
 function createUI(){
     var uiC = document.getElementById("uiContainer");
-
     styles.forEach(s=>{
         var span = document.createElement("span");
         span.textContent = s.name;
-        span.dataStyle = s;
+        span.dataDetails = s;
         span.className = "btn overFX Light";
-        span.addEventListener("click",setStyle);
+        span.addEventListener("click",UIClicked);
         uiC.appendChild(span);
         s.element = span;
         
     });
-    
-    
 }
 var statsElement;
-function updateStats(){
-    statsElement.textContent = frameRate + "FPS " + rockCount +" sprites";
+function updateStats(message){
+    if(frameRate){
+        statsElement.textContent = frameRate.frameRate.toFixed(0) + "FPS "+ rockCount +" sprites";
+    }else{
+        statsElement.textContent = message;
+    }
 }
 
 window.addEventListener("load",function(){
@@ -372,7 +390,10 @@ window.addEventListener("load",function(){
     };
     
     spriteTile.loadSpriteSheet(gameSprites);    
-    
+    if(frameRate){
+        frameRate.displayCallback = updateStats;
+        canvasMouse.renderStack.push(frameRate.update);
+    }    
     canvasMouse.renderStack.push(renderer);
     canvasMouse.start();   
 

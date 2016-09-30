@@ -1,4 +1,6 @@
 
+
+
 var fullScreenRender = (function(){
     var shaders = {};
     var id = 0;
@@ -17,6 +19,10 @@ var fullScreenRender = (function(){
     var gridSteps = 4;
     var setColours = function(data,offset){
         if(data !== undefined){
+             if(cs === null || cs.id !== shaders.grid.id){
+                cs = this.currentShader = shaders.grid;
+                gl.useProgram(cs.program);  
+            }           
             if(Array.isArray(data)){
                 gridColours.set(data,offset);
             }else{
@@ -30,6 +36,12 @@ var fullScreenRender = (function(){
     var tileGridPrep = function(data,offset){
         if(data !== undefined){
 
+            if(cs === null || cs.id !== shaders.tileGrid.id){
+                cs = this.currentShader = shaders.tileGrid;
+                gl.useProgram(cs.program);  
+                console.log(cs);                
+            }
+
             tileMap[0] = data.tiles.tileWidth;
             tileMap[1] = data.tiles.tileHeight;
             tileMap[2] = data.map.width;
@@ -40,7 +52,6 @@ var fullScreenRender = (function(){
             tileSize[1] = data.tiles.tilesY;
             tileSize[2] = (1/w)*(w/data.tiles.image.width) * data.tiles.tileWidth;
             tileSize[3] = (1/h)*(h/data.tiles.image.height) *data.tiles.tileHeight ;
-            log(tileSize)
             gl.uniform2fv(cs.tileSize,tileSize);
             gl.uniform2fv(cs.tiles,tileMap);
             
@@ -58,7 +69,7 @@ var fullScreenRender = (function(){
     var positionQuad = webGLHelper.createQuad(2,0.5);
     var origin = new Float32Array([0,0]);
     var scale = new Float32Array([1,1]);
-    var screen = new Float32Array([1/512,-1/512]);
+    var screen = new Float32Array([1/512,1/512]);
     var API = {
         shaders : shaders,
         currentShader : null,
@@ -69,12 +80,37 @@ var fullScreenRender = (function(){
             screen[0] = 1/w;
             screen[1] = 1/h;            
         },
+        setRenderTarget : function(target){ // a renderTargets texture object (not a true GL texture) or null
+            if(target ===  null){
+                w = gl.drawingBufferWidth;
+                h = gl.drawingBufferHeight;
+                screen[0] = 1/w;
+                screen[1] = 1/h;                 
+            }else{
+                w = target.width;
+                h = target.height;
+                screen[0] = 1/w;
+                screen[1] = 1/h;                 
+            }            
+        },
+
+        addShader : function(name){
+            if(webGlHelper.doesProgramSourceExist(name)){
+                cs = webGLHelper.createProgram(gl,name);
+                shaders[cs.name] = cs; 
+                this.currentShader = cs = null;
+            }else{
+                throw new RangeError("fullScreenRender No source code found for program '"+name+"'");
+            }
+        },
         setupWebGL : function(webGL){
             w = webGL.width;
             h = webGL.height;
             gl = webGL.gl;
-            cs = webGLHelper.createProgram(gl,"fillScreen");
+            cs = webGLHelper.createProgram(gl,"backgroundImage");
             shaders[cs.name] = cs; 
+            //cs = webGLHelper.createProgram(gl,"fillScreen");
+            //shaders[cs.name] = cs; 
             cs = webGLHelper.createProgram(gl,"grid");
             shaders[cs.name] = cs;
             cs.prep = setColours;
@@ -82,7 +118,7 @@ var fullScreenRender = (function(){
             shaders[cs.name] = cs;
             cs.prep = tileGridPrep;
             
-            this.currentShader = cs;
+            this.currentShader = cs = null;
             textureBuffer = gl.createBuffer();
             positionBuffer = gl.createBuffer();            
         },
@@ -124,8 +160,8 @@ var fullScreenRender = (function(){
         
     
         draw : function(originX,originY,scaleXY){
-            origin[0] = -originX;
-            origin[1] = h-originY;
+            origin[0] = (-originX) * screen[0];
+            origin[1] = (h-originY) * screen[1];            
             scale[0] = scaleXY;
             scale[1] = scaleXY;
             gl.uniform2fv(cs.origin, origin);
@@ -137,3 +173,4 @@ var fullScreenRender = (function(){
     };
     return API;
 })();
+
