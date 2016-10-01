@@ -321,7 +321,7 @@ function resizedCanvas(){
 
 }
 
-var styles = [{   
+var UIInfo = [{   
         name : "Reset", 
         func : function(){
             rocks.fEach(r => { r.dead = undefined; });
@@ -334,34 +334,10 @@ var styles = [{
             addRockCount(rockCount);            
         },
         data : "double",
-    },{
-        name : "Home",
-        data : "control",        
-    }    
+    }   
     
 ]
-function UIClicked(event){
-    event.stopPropagation();
-    if(typeof this.dataDetails.func === "function"){
-        this.dataDetails.func();
-    }    
-    updateStats();        
 
-    
-}
-function createUI(){
-    var uiC = document.getElementById("uiContainer");
-    styles.forEach(s=>{
-        var span = document.createElement("span");
-        span.textContent = s.name;
-        span.dataDetails = s;
-        span.className = "btn overFX Light";
-        span.addEventListener("click",UIClicked);
-        uiC.appendChild(span);
-        s.element = span;
-        
-    });
-}
 var statsElement;
 function updateStats(message){
     if(frameRate){

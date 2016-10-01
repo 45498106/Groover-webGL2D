@@ -1,6 +1,7 @@
 var testImages = {
     urls : ["../Images/GrooverCut509530.png"], 
     names : ["test"],
+    textOptions : ["clampLinear"],
     images : {},
     textures : {},    
     
@@ -64,42 +65,9 @@ function resizedCanvas(){
 }
 
 // the UI controls at bottom of page
-var UIInfo = [
-    {
-        name : "Home",
-        func : function(){
-            location.href = "GrooverWebGL2D.html";
-        },
-    }
-];
+var UIInfo = [];
 
-// Global event handler for UI events
-function UIClicked(event){
-    event.stopPropagation();
-    if(typeof this.dataDetails.func === "function"){
-        this.dataDetails.func();
-    }
-}
 
-// Creates UI
-function createUI(){
-    var uiC = document.getElementById("uiContainer");
-    UIInfo.forEach(s=>{
-        var span = document.createElement("span");
-        span.textContent = s.name;
-        span.dataDetails = s;
-        span.className = "btn overFX Light";
-        span.addEventListener("click",UIClicked);
-        uiC.appendChild(span);
-        s.element = span;
-    });   
-}
-
-// Global stats
-var statsElement;
-function updateStats(message){
-    statsElement.textContent = message;
-}
 
 
 // Startup.

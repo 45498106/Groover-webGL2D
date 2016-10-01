@@ -182,7 +182,7 @@ function resizedCanvas(){
     originX.value = (canvasMouse.canvas.width/2)-mouseRX*scale.value;
     originY.value = (canvasMouse.canvas.height/2)-mouseRY*scale.value;
 }
-var styles = [{
+var UIInfo = [{
         name : "clear",
         func : function(){
             clearMap(map,0);
@@ -217,33 +217,7 @@ var styles = [{
         },
    }    
 ]
-function UIClicked(event){
-    event.stopPropagation();
-    if(typeof this.dataDetails.func === "function"){
-        this.dataDetails.func();
-    }
-    updateStats();     
-}
-function mouseOver(event){
-    supressDraw = 5;
-}
-function createUI(){
-    var uiC = document.getElementById("uiContainer");
-    styles.forEach(s=>{
-        var span = document.createElement("span");
-        span.textContent = s.name;
-        span.dataDetails = s;
-        span.className = "btn overFX Light";
-        span.addEventListener("click",UIClicked);
-        span.addEventListener("mouseover",mouseOver);
-        uiC.appendChild(span);
-        s.element = span;
-    });
-}
-var statsElement;
-function updateStats(message){
-    statsElement.textContent = message;
-}
+
 window.addEventListener("load",function(){
     statsElement = document.getElementById("statsElement");
     statsElement.textContent = "Loading...";

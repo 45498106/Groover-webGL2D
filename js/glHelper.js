@@ -21,6 +21,26 @@ var webGLHelper = (function(){
     const SHADER_TYPE_NAMES = ["vertex","fragment"];
     var currentLinkerWorkingOn;
     function isKeyWord(word){ return VAR_KEYWORDS.indexOf(word) > -1;}
+    const qS = { 
+         clampX : function(gl){ gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); },
+         clampY : function(gl){ gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE); },
+         mirrorX : function(gl){ gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.MIRRORED_REPEAT); },
+         mirrorY : function(gl){ gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.MIRRORED_REPEAT); },
+         repeatX : function(gl){ gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT); },
+         repeatY : function(gl){ gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT); },
+         minNear : function(gl){ gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST); },
+         magNear : function(gl){ gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST); },
+         minLinear : function(gl){ gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); },
+         magLinear : function(gl){ gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR); },
+         clampNear : function(gl){ qS.clampX(gl);qS.clampY(gl);qS.minNear(gl);qS.magNear(gl); },
+         clampLinear : function(gl){ qS.clampX(gl);qS.clampY(gl);qS.minLinear(gl);qS.minLinear(gl); },
+         mirrorNear : function(gl){ qS.mirrorX(gl);qS.mirrorY(gl);qS.minNear(gl);qS.magNear(gl); },
+         mirrorLinear : function(gl){ qS.mirrorX(gl);qS.mirrorY(gl);qS.minLinear(gl);qS.minLinear(gl); },
+         repeatNear : function(gl){ qS.repeatX(gl);qS.repeatY(gl);qS.minNear(gl);qS.magNear(gl); },
+         repeatLinear : function(gl){ qS.repeatX(gl);qS.repeatY(gl);qS.minLinear(gl);qS.minLinear(gl); },
+    };
+
+
     var glWarnings = [];
     var glErrors = [];
     var id = 0;
@@ -158,18 +178,27 @@ var webGLHelper = (function(){
          return gl;
      }
      var API = {
-        createTexture : function (gl,image){
+        createTexture : function (gl,image,options){
             var texture;
             gl = vetGL(gl,"createTexture");
             gl.bindTexture(gl.TEXTURE_2D, texture = gl.createTexture());
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+            
+            if(options === undefined){
+                qS.clampX(gl);
+                qS.clampY(gl);
+                qS.minLinear(gl);
+                qS.magLinear(gl);
+            }else{
+                options.split(",").forEach(name=>qS[name](gl));
+            }            
+            //gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+            //gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+            //gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+            //gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
             gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
             return texture;
         },
-        createImageFromData : function(gl,width,format,data){
+        createImageFromData : function(gl,width,format,data,options){
             gl = vetGL(gl,"createImageFromData");
             var pixelWidth = 4;
             switch(format){
@@ -189,20 +218,38 @@ var webGLHelper = (function(){
             var height = data.length / (pixelWidth * width);
             var texture = gl.createTexture();
             gl.bindTexture(gl.TEXTURE_2D, texture);
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+            if(options === undefined){
+                qS.clampX(gl);
+                qS.clampY(gl);
+                qS.minLinear(gl);
+                qS.magLinear(gl);
+            }else{
+                options.split(",").forEach(name=>qS[name](gl));
+            }
+            //gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+            //gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
             gl.texImage2D(gl.TEXTURE_2D, 0, format, width, height, 0, format, gl.UNSIGNED_BYTE, data);
             return texture;
         },
-        createEmptyTexture : function(gl,width,height){
+        createEmptyTexture : function(gl,width,height,options){
             var texture;
             gl = vetGL(gl,"createEmptyTexture");
             
             gl.bindTexture(gl.TEXTURE_2D, texture = gl.createTexture());
+            if(options === undefined){
+                qS.clampX(gl);
+                qS.clampY(gl);
+                qS.minLinear(gl);
+                qS.magLinear(gl);
+            }else{
+                options.split(",").forEach(name=>qS[name](gl));
+            }
+            /*
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+            */
             gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
             return texture;
         },

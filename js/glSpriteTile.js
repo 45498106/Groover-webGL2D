@@ -21,7 +21,7 @@ var spriteTile = (function(){
         loadImageSet : function(imageSet){
             var i,count;
             var load = function(image){
-                imageSet.textures[this.name] = webGLHelper.createTexture(canvasMouse.webGL.gl,this);
+                imageSet.textures[this.name] = webGLHelper.createTexture(canvasMouse.webGL.gl,this, imageSet.images[this.name].options);
                 count -= 1;
                 if(count === 0){
                     if(typeof imageSet.allLoaded === "function"){
@@ -36,6 +36,8 @@ var spriteTile = (function(){
             for(i = 0; i < imageSet.urls.length; i ++){
                 imageSet.images[imageSet.names[i]] = imageLoader.loadImage(imageSet.urls[i],load);
                 imageSet.images[imageSet.names[i]].name = imageSet.names[i];
+                imageSet.images[imageSet.names[i]].options = imageSet.textOptions[i];
+                
                 count += 1;
                 logs.log("loading image : " + imageSet.names[i]);
             }

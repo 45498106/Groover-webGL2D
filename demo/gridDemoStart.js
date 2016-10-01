@@ -246,7 +246,7 @@ function setSteps(){
     gridSteps = Math.max(2, Math.min(16, gridSteps));
     fullScreenRender.shaders.grid.setSteps(gridSteps);    
 }
-var styles = [
+var UIInfo = [
     {
         name : "Grid Home",
         func : function(){
@@ -298,28 +298,7 @@ var styles = [
         func : setSteps,
     }
 ];
-function UIClicked(event){
-    event.stopPropagation();
-    if(typeof this.dataDetails.func === "function"){
-        this.dataDetails.func();
-    }
-}
-function createUI(){
-    var uiC = document.getElementById("uiContainer");
-    styles.forEach(s=>{
-        var span = document.createElement("span");
-        span.textContent = s.name;
-        span.dataDetails = s;
-        span.className = "btn overFX Light";
-        span.addEventListener("click",UIClicked);
-        uiC.appendChild(span);
-        s.element = span;
-    });   
-}
-var statsElement;
-function updateStats(message){
-    statsElement.textContent = message;
-}
+
 window.addEventListener("load",function(){
     statsElement = document.getElementById("statsElement");
     statsElement.textContent = "Loading...";
