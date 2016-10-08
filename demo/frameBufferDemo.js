@@ -1,5 +1,5 @@
 var testImages = {
-    urls : ["../Images/MapTest.png","../Images/NormalMapZFull.png","../Images/owl.jpg"], 
+    urls : ["../Images/MapTest.png","../Images/GrooverCut639551.png","../Images/owl.jpg"], 
     names : ["map","normals","owl"],
     textOptions : [{sampler : "repeatLinear"},{sampler : "repeatLinear"},{sampler : "repeatLinear"}],
     images : {},
@@ -80,8 +80,8 @@ function renderer(){
     // fullScreenRender.prepRender(fullScreenRender.shaders.frameBufferTestB, testImages.textures.test);
     fullScreenRender.prepRender(fullScreenRender.shaders.frameBufferTestB);//, renderSource.texture, testImages.textures.test);
     //fullScreenRender.setMultiTexture([renderSource.texture, testImages.textures.test,testImages.textures.direction]);
-    fullScreenRender.setMultiTexture([renderSource.texture, testImages.textures.owl,testImages.textures.direction]);
-    fBTBMouse.shadow[0] = Math.sin(canvasMouse.globalTime/100000) * 100+Math.sin(canvasMouse.globalTime/10000) * 10+Math.sin(canvasMouse.globalTime/1000) * 1;///1000;
+    fullScreenRender.setMultiTexture([renderSource.texture, testImages.textures.normals,testImages.textures.direction]);
+    fBTBMouse.shadow[0] =(canvasMouse.globalTime/100) +  Math.sin(canvasMouse.globalTime/100000) * 100+Math.sin(canvasMouse.globalTime/10000) * 10+Math.sin(canvasMouse.globalTime/1000) * 1;///1000;
     fBTBMouse.shadow[1] = (mx.real -0.5) * 0.01;
     fBTBMouse.shadow[2] = (my.real -0.5) * 0.01;
     fBTBMouse.set(gl);
@@ -93,9 +93,9 @@ function renderer(){
 
     scale.value = 1 + Math.sin(canvasMouse.globalTime / 1000) * 0.2 + Math.sin(canvasMouse.globalTime / 130) * 0.2;
     scale.update();
-    var ss = Math.sin(canvasMouse.globalTime/6000)*0.01;
-    var ss1 = Math.sin(canvasMouse.globalTime/8560)*0.01;
-    fullScreenRender.draw(0, 0, 1/(1.0+ss), 1/-(1.0+ss1)); //-scale.real);
+    var ss = Math.sin(canvasMouse.globalTime/6000)*0.021 + Math.sin(canvasMouse.globalTime/94972)*0.021;
+    var ss1 =  Math.sin(canvasMouse.globalTime/8560)*0.021 + Math.sin(canvasMouse.globalTime/13946)*0.021;
+    fullScreenRender.drawScale(1/(1.0+ss), 1/-(1.0+ss1)); //-scale.real);
  //   fBTBMouse.shadow[0] = canvasMouse.globalTime/1340;//Math.sin(canvasMouse.globalTime/1000) * 10;///1000;
    // fBTBMouse.shadow[1] = 0.5 - (mx.real -0.5) * 0.03;
     //fBTBMouse.shadow[2] = 0.5 - (my.real -0.5) * 0.03;

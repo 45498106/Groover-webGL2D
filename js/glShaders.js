@@ -155,6 +155,7 @@
             
             void main() {
                 vec4 v = texture2D(<%t1>,tex);
+                v *= v * v;
                 v.x = v.x < <%level> ? (v.x < <%level>/2.0 ? (v.x < <%level>/3.0 ? 0.0: 0.33): 0.66) : 1.0;
                 v.y = v.y < <%level> ? (v.y < <%level>/2.0 ? (v.y < <%level>/3.0 ? 0.0: 0.33): 0.66) : 1.0;
                 v.z = v.z < <%level> ? (v.z < <%level>/2.0 ? (v.z < <%level>/3.0 ? 0.0: 0.33): 0.66) : 1.0;
@@ -710,8 +711,8 @@
             #include simplePosTexture;
             #include screenScale;
             void main() {
-                gl_Position = position * vec4(scale.x,-(screen.y / screen.x) * scale.y,1.0,1.0);
-                tex = texCoords;
+                gl_Position = <%pos> * vec4(<%scale>.x,-(<%screen>.y / <%screen>.x) * <%scale>.y,1.0,1.0);
+                <%tex> = <%coords>;
             }            
         `);
 }
@@ -727,14 +728,16 @@
             
             #uniform vec2 size;
             #shadow uniform vec3 mouse; 
-            const float MIX = 0.0000191;
+            const float MIX = 0.0051;
+            const float MIX1 = 0.0021*2.0;
+
 
             void main() {
-                vec4 pixA = texture2D(texture0,tex);
-                vec4 pixA1 = texture2D(texture0,tex+vec2(1.0/<%atrractLen>,0.0));
-                vec4 pixA2 = texture2D(texture0,tex + vec2(-1.0/<%atrractLen>,0.0) );
-                vec4 pixA3 = texture2D(texture0,tex + vec2(0.0,1.0/<%atrractLen>) );
-                vec4 pixA4 = texture2D(texture0,tex + vec2(0.0,-1.0/<%atrractLen>) );
+                vec4 pixA = texture2D(texture0,<%tex>);
+                vec4 pixA1 = texture2D(texture0,<%tex>+vec2(1.0/<%atrractLen>,0.0));
+                vec4 pixA2 = texture2D(texture0,<%tex> + vec2(-1.0/<%atrractLen>,0.0) );
+                vec4 pixA3 = texture2D(texture0,<%tex> + vec2(0.0,1.0/<%atrractLen>) );
+                vec4 pixA4 = texture2D(texture0,<%tex> + vec2(0.0,-1.0/<%atrractLen>) );
                 vec2 likeAttr = vec2(0.0,0.0);
                 float d1 = (1.0-length(pixA1-pixA))*1.0;
                 float d2 = (1.0-length(pixA2-pixA))*1.0;
@@ -745,11 +748,11 @@
                 likeAttr += d3*vec2(0.0,1.0/<%atrractLen>);
                 likeAttr += d4*vec2(0.0,-1.0/<%atrractLen>);
                 likeAttr *= vec2(pixA.x,pixA.y)*pixA.z;
-               //likeAttr = normalize(likeAttr)/(<%textureSize>/2.0);
+               likeAttr = normalize(likeAttr)/(<%textureSize>/20.0);
                float lla = length(likeAttr);
                 float ang = 0.01*mouse.x*lla;
-                vec2 texa = tex - vec2(0.5,0.5);//+likeAttr*1.0;
-                //vec2 texa = tex - vec2(mouse.y,mouse.z);
+                vec2 texa = <%tex> - vec2(0.5,0.5);//+likeAttr*1.0;
+                //vec2 texa = <%tex> - vec2(mouse.y,mouse.z);
                 float le = length(texa)+0.01;
                 float dir = atan(texa.y,texa.x)*lla;
                 le = (sin(((pixA.x-pixA.y)+1.0)/5.0)+1.2) / (le *2.0 * le);
@@ -757,7 +760,8 @@
               //      ang = 0.0;
                //}else{
                     ang = le;//-0.15;
-                   ang *= 0.0015/cos(d1);
+                   ang *= (0.00015 )/cos(d1);
+                   ang +=  cos((mouse.x/100.0)*pixA.x) * (0.002 * pixA.y);
                // }
                ang *= cos(ang*10.0*pixA.z*d2)*0.6*pixA.x*(d4+d2+d3+d1);
                 vec2 texT = vec2(
@@ -780,15 +784,20 @@
                         cos(mouse.x * len + dd * pix.y/d4)
                    ))/<%textureSize>;
                 off += vec2((pix.x -0.5)/ d4,(pix.y - 0.5)/d3)/(<%textureSize>/4.0);
-              //  off += likeAttr*1.0;
                 off = (normalize(off)/(<%textureSize>/4.0));///likeAttr;
+                off += likeAttr*(0.5 + sin(mouse.x/126.0)*0.5 + sin(mouse.x/153.0)*0.5);
                 vec4 ec = vec4(
-                    mm*MIX+(cos(mouse.x*21.31*pix.y*d1)*0.071*d3),
-                    mm*MIX+(sin(mouse.x*31.21*pix.z*d2)*0.071*d2),
-                    mm*MIX+(cos(mouse.x*11.11*pix.x*d3)*0.071*d1),
+                    mm*MIX+(cos(mouse.x*2.31*pix.y*off.x)*MIX1),
+                    mm*MIX+(cos(mouse.x*3.21*pix.z*off.y)*MIX1),
+                    mm*MIX+(cos(mouse.x*1.11*pix.x*off.x*off.y)*MIX1),
                     mm*MIX);
+                /*vec4 ec1 = vec4(
+                    1.0-mm*MIX-(cos(mouse.x*2.31*pix.y*d1)*0.071*d3),
+                    1.0-mm*MIX-(sin(mouse.x*3.21*pix.z*d2)*0.071*d2),
+                    1.0-mm*MIX-(cos(mouse.x*1.11*pix.x*d3)*0.071*d1),
+                    1.0-mm*MIX);*/
 
-                gl_FragColor = texture2D(texture0,texT + off) * vec4(1.0-mm*MIX) +ec/10.0 + texture2D(texture1,texT + vec2(mouse.x*0.1,mouse.x/pix.y)) * ec;
+                gl_FragColor = texture2D(texture0,texT + off) * vec4(1.0-mm*MIX)  + texture2D(texture1,texT + vec2(mouse.x*0.01,mouse.x/500.0)) * ec;
 
             }`);
 }

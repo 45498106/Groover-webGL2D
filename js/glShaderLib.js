@@ -41,8 +41,12 @@
             #uniform vec2 screen;
             #uniform vec2 scale;
             varying vec2 tex;  
+            #%screen = screen;
+            #%scale = scale;
+            #%tex = tex;
 #Fragment            
             varying vec2 tex;  
+            #%tex = tex;
             `
 );}
 {webGLHelper.addLib("screenScaleOrigin",`
