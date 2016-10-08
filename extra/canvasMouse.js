@@ -31,8 +31,8 @@ var canvasMouse = (function(){
         webGL.width = canvas.width = window.innerWidth; 
         webGL.height = canvas.height = window.innerHeight; 
 
-        //webGL.gl = webGL.getContext(API.webGLSettings.context,API.webGLSettings.options);
-        webGL.gl = webGL.getContext(API.webGLSettings.context);
+        webGL.gl = webGL.getContext(API.webGLSettings.context,API.webGLSettings.options);
+        //webGL.gl = webGL.getContext(API.webGLSettings.context);
         ctx = canvas.getContext("2d"); 
 
         if (typeof setGlobals === "function") { 
@@ -160,7 +160,7 @@ var canvasMouse = (function(){
         ctx : null,
         webGL : null,
         webGLSettings : {
-            context : "webgl",
+            context : "experimental-webgl",
             options : {
                 alpha: true,
                 depth: false,

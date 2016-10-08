@@ -15,13 +15,44 @@ var webGLHelper = (function(){
     Please not that this makes shaders source code none standard and will not compile as is without these
     functions . Just remove the #
     *************************************************************************************************** */
-    const VAR_TYPES = ["attribute","uniform","name"];
-    const VAR_KEYWORDS = ["names","linkNames","program","id","name","prep"]; // list of keywords
+    const VAR_TYPES = ["attribute","uniform","name","shadow","include"]; // all have #pre fix
+    const VAR_KEYWORDS = ["names","linkNames","program","id","name","prep",]; // list of keywords
     const VAR_LOCATE_FUNC = {attribute : "getAttribLocation", uniform : "getUniformLocation"};
     const SHADER_TYPE_NAMES = ["vertex","fragment"];
-    var currentLinkerWorkingOn;
     function isKeyWord(word){ return VAR_KEYWORDS.indexOf(word) > -1;}
-    const qS = { 
+    
+   
+    
+    
+    // Gl types constants and more
+    var GLVersion = 2;
+    const GL = {
+        imageFormats : "ALPHA,RGB,RGBA,LUMINANCE,LUMINANCE_ALPHA".split(","),
+        imageTypes : ["UNSIGNED_BYTE","UNSIGNED_SHORT_5_6_5","UNSIGNED_SHORT_4_4_4_4","UNSIGNED_SHORT_5_5_5_1"],
+    }
+    const GL2 = {
+        imageFormats : "R8,R16F,R32F,R8UI,RG8,RG16F,RG32F,RGUI,RGB8,SRGB8,RGB565,R11F_G11F_B10F,RGB9_E5,RGB16F,RGB32F,RGB8UI,RGBA8,SRGB_APLHA8,RGB5_A1,RGBA4444,RGBA16F,RGBA32F,RGBA8UI".split(","),
+        imageTypes :["BYTE","UNSIGNED_SHORT","SHORT","UNSIGNED_INT","INT","HALF_FLOAT","FLOAT","UNSIGNED_INT_2_10_10_10_REV","UNSIGNED_INT_10F_11F_11F_REV","UNSIGNED_INT_5_9_9_9_REV","UNSIGNED_INT_24_8","FLOAT_32_UNSIGNED_INT_24_8_REV"],
+    }
+    
+    const extensions = {
+        WEBGL_depth_texture : {
+            ImageFormates : ["DEPTH_COMPONENT","DEPTH_STENCIL"],
+        },
+        EXT_sRGB : {
+            imageFormats : ["SRGB_EXT","SRGB_ALPHA_EXT"],
+        }
+    }
+    function vetGL(gl,functionName){
+        if(gl === undefined){
+            if(canvasMouse === undefined || canvasMouse.webGL === undefined || canvasMouse.webGL.gl === undefined){
+                throw new ReferenceError("webGLHelper." + functionName + " requires a valid gl context");
+            }
+            return canvasMouse.webGL.gl;
+        }
+        return gl;
+    }
+    const qS = { // quick setting functions
          clampX : function(gl){ gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); },
          clampY : function(gl){ gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE); },
          mirrorX : function(gl){ gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.MIRRORED_REPEAT); },
@@ -38,13 +69,83 @@ var webGLHelper = (function(){
          mirrorLinear : function(gl){ qS.mirrorX(gl);qS.mirrorY(gl);qS.minLinear(gl);qS.minLinear(gl); },
          repeatNear : function(gl){ qS.repeatX(gl);qS.repeatY(gl);qS.minNear(gl);qS.magNear(gl); },
          repeatLinear : function(gl){ qS.repeatX(gl);qS.repeatY(gl);qS.minLinear(gl);qS.minLinear(gl); },
-    };
+    };    
+    function vetImageFormat(gl,format,caller,useDefault){
+        gl = vetGL(gl,caller);
+        if(format !== null && format !== undefined){
+            if(typeof format === "string"){
+                if(GL.imageFormats.indexOf(format) > -1){
+                    return gl[format];
+                }
+                if(GLVersion >= 2){
+                    if(GL2.imageFormats.indexOf(format) > -1){
+                        return gl[format];
+                    }
+                }
+            }else{
+                if(GL.imageFormats.find(name => gl[name] === format) !== undefined){
+                    return format;
+                }
+                if(GLVersion >= 2){
+                    if(GL2.imageFormats.find(name => gl[name] === format) !== undefined){
+                        return format;
+                    }
+                }
+            }
+        } else if(useDefault === true){
+
+            if(API.debug){
+                console.warn("webGLHelper." + caller + " unknown image format. Default RGBA used");
+            }
+            return gl.RGBA;
+        }
+        throw new ReferenceError("webGLHelper." + caller + " requires a valid image format");
+    }
+    function vetImageType(gl,type,caller,useDefault){
+        gl = vetGL(gl,caller);
+        if(type !== null && type !== undefined){
+            if(typeof type === "string"){
+                if(GL.imageTypes.indexOf(type) > -1){
+                    return gl[type];
+                }
+                if(GLVersion >= 2){
+                    if(GL2.imageTypes.indexOf(type) > -1){
+                        return gl[type];
+                    }
+                }
+            }else{
+                if(GL.imageTypes.find(name => gl[name] === type) !== undefined){
+                    return type;
+                }
+                if(GLVersion >= 2){
+                    if(GL2.imageTypes.find(name => gl[name] === type) !== undefined){
+                        return type;
+                    }
+                }
+            }
+        }
+        if(useDefault === true){
+            if(API.debug){
+                console.warn("webGLHelper." + caller + " unknown image type. Default UNSIGNED_BYTE used.");
+            }
+            return gl.UNSIGNED_BYTE;
+        }
+        throw new ReferenceError("webGLHelper." + caller + " requires a valid image type");
+    }
+        
+        
+
+    
+
+    
 
 
+    var currentLinkerWorkingOn;
     var glWarnings = [];
     var glErrors = [];
     var id = 0;
     var programSource = {};
+    var library = {};
     function getSourceDirectives(source,name){
         var items = {
             source : null,
@@ -63,6 +164,36 @@ var webGLHelper = (function(){
         });
         return items;
     }
+    function includeLibrary(script,type){
+        script = script.replace(new RegExp("#include.+;","g"), str => {
+            
+            var lib = str.replace(/  /g," ").split(" ")[1].split(";")[0];
+            if(library[lib] === undefined){
+                throw new SyntaxError("CreateProgram could not find the include library '"+lib+"'");
+            }
+
+            if(type === "vertex"){
+                if(library[lib].vertexSource !== undefined){
+                    return library[lib].vertexSource;
+                }
+                if(library[lib].source !== undefined){
+                    return library[lib].source;
+                }
+            }
+            if(type === "fragment"){
+                if(library[lib].fragSource !== undefined){
+                    return library[lib].fragSource;
+                }
+                if(library[lib].source !== undefined){
+                    return library[lib].source;
+                }
+            }
+            return "";
+        });
+
+        return script;
+        
+    }
     function setConstants(script,consts = []){
         var foundC = [];
         script = script.replace(new RegExp("#%.+;","g"), str => {
@@ -79,11 +210,11 @@ var webGLHelper = (function(){
             });
         });
         consts.forEach(c => {
-            script = script.replace("<%"+c.name+">",c.value);
+            script = script.replace(new RegExp("<%"+c.name+">","g"),c.value);
 
         });
         foundC.forEach(c => {
-            script = script.replace("<%"+c.name+">",c.value);
+            script = script.replace(new RegExp("<%"+c.name+">","g"),c.value);
 
         });
         return script;
@@ -92,8 +223,7 @@ var webGLHelper = (function(){
         
         
     }
-    // get # delimited variables from shader source
-    function getVariables(script,variables){
+    function getVariables(script,variables){    // get # delimited variables from shader source
         var name = null;
         var items = [];
         VAR_TYPES.forEach(f => {
@@ -106,6 +236,63 @@ var webGLHelper = (function(){
                         throw new SyntaxError(currentLinkerWorkingOn+" : Protected keyword. '"+name+"' is a keyword and can not be used to name a shader.");
                     }
                     return "";
+                }else if(data[0] === "#shadow"){
+                    name = data[3].replace(/\[[0-9]+?\]|;/g,"");
+                    var shadow = null;
+                    var arrayItemCount = 1;
+                    var size = 1;
+                    var type = null;
+                    var func = "uniform"
+                    if(data[3].indexOf("[") > -1){
+                        arrayItemCount = Number(data[3].split("[")[1].split("[")[0].trim());
+                        if(isNaN(arrayItemCount)){
+                            throw new SyntaxError(currentLinkerWorkingOn+" : Shadow variable'"+name+"' Array length is not a number");
+                        }
+                    }
+                    if(data[2].indexOf("vec") > -1){
+                        size = Number(data[2].substr(3));
+                        if(isNaN(arrayItemCount)){
+                            throw new SyntaxError(currentLinkerWorkingOn+" : Shadow variable'"+name+"' vec size  is not a number");
+                        }
+                        type = "float";
+                    }
+                    if(data[2].indexOf("ivec") > -1){
+                        size = Number(data[2].substr(4));
+                        if(isNaN(arrayItemCount)){
+                            throw new SyntaxError(currentLinkerWorkingOn+" : Shadow variable'"+name+"' ivec size  is not a number");
+                        }
+                        type = "int";
+                    }                    
+                    if(data[2] === "float"){
+                        type = "float";
+                    }                    
+                    if(data[2] === "int"){
+                        type = "int";
+                    }
+                    
+                    if(type === null){
+                        throw new SyntaxError(currentLinkerWorkingOn+" : Shader directive #shadow '"+name+"' unknown type '"+data[2]+"'");                        
+                    }
+                    if(type === "float"){
+                         shadow = new Float32Array(size * arrayItemCount);
+                         func += size + "fv" 
+                    }                   
+                    if(type === "int"){
+                         shadow = new Int32Array(size * arrayItemCount);
+                         func += size + "iv" 
+                    }                   
+                    
+                    if(shadow === null){
+                        throw new SyntaxError(currentLinkerWorkingOn+" : Shader directive #shadow '"+name+"' type '"+ data[2]+"' not supported");
+                    }
+                    var funcStr = `
+                        return function(gl){
+                            gl.${func}(this.location,this.shadow);
+                        }
+                    `;
+
+                    items.push({use : data[1] ,shadow : shadow,func : funcStr, type : data[2] , name : name});
+                    return str.substr(7);  // remove shadow token
                 }
                 items.push({use : f , type : data[1] , name : data[2].replace(/\[[0-9]+?\]|;/g,"")});
                 return str.substr(1);
@@ -128,15 +315,26 @@ var webGLHelper = (function(){
         items.forEach(i => variables[name].push(i));
         return  script;
     }
-    // get location IDs for shader variables
-    var getLocations = function(gl,shaders,vars = {}){
+    function getLocations(gl,shaders,vars = {}){    // get location IDs for shader variables
         while(shaders.variables.linkNames.length > 0){
             var name = shaders.variables.linkNames.shift();
-            shaders.variables[name].forEach(v => { vars[v.name] = gl[VAR_LOCATE_FUNC[v.use]](shaders.program, v.name); });
+            shaders.variables[name].forEach(v => { 
+                if(v.shadow !== undefined){
+                    var location = gl[VAR_LOCATE_FUNC[v.use]](shaders.program, v.name); 
+                    v.func = v.func.replace("#location#",location);
+                    vars[v.name] = {};
+                    vars[v.name].set = (new Function("owner",v.func))(vars);
+                    vars[v.name].shadow = v.shadow;
+                    vars[v.name].location = location;
+                    
+                }else{
+                    vars[v.name] = gl[VAR_LOCATE_FUNC[v.use]](shaders.program, v.name); 
+                }
+            });
         }
         return vars;
     }
-    var report = function(gl,item,type,name,source){
+    function report(gl,item,type,name,source){
         var str = type === "shader" ? gl.getShaderInfoLog(item):gl.getProgramInfoLog(item);;
         var error = false;
         str = str.split("\n")
@@ -168,18 +366,11 @@ var webGLHelper = (function(){
         });
         return error;
     }
-     function vetGL(gl,functionName){
-         if(gl === undefined){
-             if(canvasMouse === undefined || canvasMouse.webGL === undefined || canvasMouse.webGL.gl === undefined){
-                 throw new ReferenceError("webGLHelper." + functionName + " requires a valid gl context");
-             }
-             return canvasMouse.webGL.gl;
-         }
-         return gl;
-     }
+     
      var API = {
+        debug : true,
         createTexture : function (gl,image,options){
-            var texture;
+            var texture,format,iType;
             gl = vetGL(gl,"createTexture");
             gl.bindTexture(gl.TEXTURE_2D, texture = gl.createTexture());
             
@@ -189,18 +380,21 @@ var webGLHelper = (function(){
                 qS.minLinear(gl);
                 qS.magLinear(gl);
             }else{
-                options.split(",").forEach(name=>qS[name](gl));
+                options.sampler.split(",").forEach(name=>qS[name](gl));
+                format = options.format;
+                iType = options.type;
             }            
-            //gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-            //gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-            //gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-            //gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+            format = vetImageFormat(gl,format,"createTexture",true);
+            iType = vetImageType(gl,iType,"createTexture",true);
+
+            gl.texImage2D(gl.TEXTURE_2D, 0, format, format, iType, image);
             return texture;
         },
-        createImageFromData : function(gl,width,format,data,options){
+        createImageFromData : function(gl,width,data,options){
+            var iType;
             gl = vetGL(gl,"createImageFromData");
             var pixelWidth = 4;
+            var format = vetImageFormat(gl,options.format,"createImageFromData",true);
             switch(format){
                 case gl.RGBA:
                     pixelWidth = 4;
@@ -221,36 +415,35 @@ var webGLHelper = (function(){
             if(options === undefined){
                 qS.clampX(gl);
                 qS.clampY(gl);
-                qS.minLinear(gl);
-                qS.magLinear(gl);
+                qS.minNear(gl);
+                qS.magNear(gl);
             }else{
-                options.split(",").forEach(name=>qS[name](gl));
+                iType = options.type;
+                options.sampler.split(",").forEach(name=>qS[name](gl));
             }
-            //gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-            //gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-            gl.texImage2D(gl.TEXTURE_2D, 0, format, width, height, 0, format, gl.UNSIGNED_BYTE, data);
+            iType = vetImageType(gl,iType,"createImageFromData",true);
+
+            gl.texImage2D(gl.TEXTURE_2D, 0, format, width, height, 0, format, iType, data);
             return texture;
         },
         createEmptyTexture : function(gl,width,height,options){
-            var texture;
+            var texture,format,iType;
             gl = vetGL(gl,"createEmptyTexture");
             
             gl.bindTexture(gl.TEXTURE_2D, texture = gl.createTexture());
             if(options === undefined){
-                qS.clampX(gl);
-                qS.clampY(gl);
+                qS.repeatX(gl);
+                qS.repeatY(gl);
                 qS.minLinear(gl);
                 qS.magLinear(gl);
             }else{
-                options.split(",").forEach(name=>qS[name](gl));
-            }
-            /*
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-            */
-            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+                options.sampler.split(",").forEach(name=>qS[name](gl));
+                format = options.format;
+                iType = options.type;
+            }            
+            format = vetImageFormat(gl,format,"createEmptyTexture",true);
+            iType = vetImageType(gl,iType,"createEmptyTexture",true);
+            gl.texImage2D(gl.TEXTURE_2D, 0, format, width, height, 0, format, iType, null);
             return texture;
         },
         createFrameBuffer : function(gl,width,height){
@@ -261,10 +454,29 @@ var webGLHelper = (function(){
             frameBuffer.height = Math.floor(height);   
             return frameBuffer;
         },
-        updateTexture : function(gl,spriteTile){
+        setTextureData : function(gl,texture,image,format,type){
+            gl = vetGL(gl,"setTextureData");
+            if(texture === undefined || texture === null){
+                throw new ReferanceError("setTextureData requires a valid webGL texture.");
+            }
+            if(image === undefined || image === null){
+                throw new ReferanceError("setTextureData requires a valid image or data source.");
+            }
+            format = vetImageFormat(gl,format,"createEmptyTexture",true);
+            type = vetImageType(gl,type,"createEmptyTexture",true);
+            
+            gl.bindTexture(gl.TEXTURE_2D, texture);            
+            gl.texImage2D(gl.TEXTURE_2D, 0, format, format, type, image);   
+            return texture;
+        },
+        updateTexture : function(gl,spriteTile){  /* old and depreciated soon */
             gl = vetGL(gl,"updateTexture");
+            var format = spriteTile.options.format            
+            var type = spriteTile.options.type            
+            format = vetImageFormat(gl,format,"updateTexture",true);
+            type = vetImageType(gl,type,"updateTexture",true);
             gl.bindTexture(gl.TEXTURE_2D, spriteTile.texture);
-            gl.texImage2D(gl.TEXTURE_2D, 0, spriteTile.format, spriteTile.width,spriteTile.height,0,spriteTile.format, gl.UNSIGNED_BYTE, spriteTile.map);            
+            gl.texImage2D(gl.TEXTURE_2D, 0, format, spriteTile.width,spriteTile.height,0,format, type, spriteTile.map);            
             
         },
         createCompositeFilters : function(gl){
@@ -346,11 +558,11 @@ var webGLHelper = (function(){
             gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
             return buffer;
         },
-        addShader : function(programName,source){
+        addShader : function(shaderName,source){
             var types = getSourceDirectives(source,"type");
             source = types.source;
             if(types.list.length === 0){
-                throw new SyntaxError("   '"+programName+"' Shader source code missing #type directive.");
+                throw new SyntaxError("   '"+shaderName+"' Shader source code missing #type directive.");
             }
             var type = types.list.pop();
             var ind;
@@ -358,42 +570,75 @@ var webGLHelper = (function(){
                 type = types.list.pop();
             }
             if(ind === -1){
-                throw new RangeError(" '"+programName+"' Shader source code missing correct #type directive. Must be `vertex` or `fragment`");
+                throw new RangeError(" '"+shaderName+"' Shader source code missing correct #type directive. Must be `vertex` or `fragment`");
             }
-            if(programSource[programName] === undefined){
-                programSource[programName] = {};
+            if(programSource[shaderName] === undefined){
+                programSource[shaderName] = {};
             }
-            programSource[programName][type] = {
+            programSource[shaderName][type] = {
                 source : source,
                 type : type.toUpperCase() + "_SHADER",
             }
             return programSource;
         },
-        addUtillity : function(programName,functions){
-            if(programSource[programName] === undefined){
-                programSource[programName] = {};
+        addUtillity : function(shaderName,functions){
+            if(programSource[shaderName] === undefined){
+                programSource[shaderName] = {};
                 
             }
-            if(programSource[programName].utilities === undefined){
-                programSource[programName].utilNames = [];
-                programSource[programName].utilities = {};
+            if(programSource[shaderName].utilities === undefined){
+                programSource[shaderName].utilNames = [];
+                programSource[shaderName].utilities = {};
                 
             }
             functions.forEach(f => {
-                if(programSource[programName].utilNames.indexOf(f.name) === -1){
-                    programSource[programName].utilNames.push(f.name);
+                if(programSource[shaderName].utilNames.indexOf(f.name) === -1){
+                    programSource[shaderName].utilNames.push(f.name);
                 }
-                programSource[programName].utilities[f.name] = f.func;
+                programSource[shaderName].utilities[f.name] = f.func;
                 
                 
             })
             return programSource;
+        },        
+        addLib : function(libName,source){
+            if(library[libName] === undefined){
+                library[libName] = {};                
+            }else{
+                if(API.debug){
+                    console.warn("webGLHelper is replacing an existing library '"+libName+"' with a new one.");
+                }
+            }
+            var vsource = source.split("#Vertex")[1].split("#Fragment")[0];
+            var fsource = source.split("#Fragment")[1];
+            if(vsource !== undefined){
+                library[libName].vertexSource = vsource;
+            }
+            if(fsource !== undefined){
+                library[libName].fragSource = fsource;
+            }
+            if(fsource === undefined && vsource === undefined){
+                library[libName].source = source;
+            }
+            return library;
         },        
         doesProgramSourceExist  : function(name){
             if( programSource[name] !== undefined){
                 return true;
             }
             return false;
+        },
+        setShaderOption : function(shaderName,options){
+            var ps;
+            if((ps = programSource[shaderName]) === undefined){
+                ps = programSource[shaderName] = {};
+            }
+            if(ps.options === undefined){
+                ps.options = {};
+            }            
+            for(var i in options){
+                ps.options[i] = options[i];
+            }
         },
         createProgram : function (gl, pname, consts) {// creates vertex and fragment shaders
             gl = vetGL(gl,"createProgram");            
@@ -408,8 +653,13 @@ var webGLHelper = (function(){
                 if (script !== undefined) {
                     currentLinkerWorkingOn = script;
                     var shader = gl.createShader(gl[script.type]);
-                    var source = setConstants(script.source,consts);
-                    source = getVariables(source,variables);
+                    var source = includeLibrary(script.source,n);  // link in libs
+                    source = setConstants(source, consts);   // set constants
+                    source = getVariables(source, variables);  // get variables
+                    if(s.options !== undefined && s.options.showPreCompile){
+                        console.log("Showing pre compiled "+n+" source for "+pname);
+                        console.log(source);
+                    }
                     gl.shaderSource(shader, source);
                     gl.compileShader(shader);
                     if(report(gl,shader,"shader", n, source)){throw new ReferenceError("WEBGL Shader error : Program : '"+pname+"' shader : " + n); }

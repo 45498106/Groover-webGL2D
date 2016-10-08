@@ -50,7 +50,9 @@ var spriteTile = (function(){
             tileMap = {};
             if(maxTiles <= 256){
                 map = new Uint8Array(width * height);
-                tileMap.format = gl.LUMINANCE;
+                tileMap.options = {};
+                tileMap.options.format = gl.LUMINANCE;
+                tileMap.options.sampler = "repeatNear";
                 tileMap.bytesPerTile = 1;
             }else
             if(maxTiles <= 256 * 256){
@@ -65,7 +67,7 @@ var spriteTile = (function(){
             tileMap.maxTiles = maxTiles;
             tileMap.width = width;
             tileMap.height = height;
-            tileMap.texture = webGLHelper.createImageFromData(gl,width,tileMap.format,map);
+            tileMap.texture = webGLHelper.createImageFromData(gl,width,map,tileMap.options);
             tileMap.ready = true;   
             tileMap.map = map;   
             tileMap.update = updateTileMap;
@@ -117,7 +119,7 @@ var spriteTile = (function(){
             var load = function(image){
                 sprites.image.sprites = sprites.sprites;
                 if(sprites.texture === null){
-                    sprites.texture = webGLHelper.createTexture(canvasMouse.webGL.gl,this);
+                    sprites.texture = webGLHelper.createTexture(canvasMouse.webGL.gl,this,sprites.textureOptions);
                     if(sprites.sprites !== undefined){
                         var len = sprites.sprites.length;
                         sprites.locations = new Int32Array(len * 4);

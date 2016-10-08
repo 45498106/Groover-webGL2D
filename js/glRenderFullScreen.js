@@ -1,6 +1,6 @@
 
 
-
+// this needs to be renamed..
 var fullScreenRender = (function(){
     var shaders = {};
     var id = 0;
@@ -56,7 +56,7 @@ var fullScreenRender = (function(){
             gl.uniform2fv(cs.tiles,tileMap);
             
         }else{
-            gl.uniform1i(cs.texture, 0);  // texture unit 0
+            gl.uniform1i(cs.texture0, 0);  // texture unit 0
             gl.uniform1i(cs.map, 1);  // texture unit 1        
             gl.uniform2fv(cs.tileSize,tileSize);
             gl.uniform2fv(cs.tiles,tileMap);
@@ -94,9 +94,9 @@ var fullScreenRender = (function(){
             }            
         },
 
-        addShader : function(name){
-            if(webGlHelper.doesProgramSourceExist(name)){
-                cs = webGLHelper.createProgram(gl,name);
+        addShader : function(name,consts){
+            if(webGLHelper.doesProgramSourceExist(name)){
+                cs = webGLHelper.createProgram(gl,name,consts);
                 shaders[cs.name] = cs; 
                 this.currentShader = cs = null;
             }else{
@@ -125,21 +125,39 @@ var fullScreenRender = (function(){
         prepRender : function (shader = this.currentShader,texture,texture1){
             cs = this.currentShader = shader;
             gl.useProgram(cs.program);
-            gl.activeTexture(gl.TEXTURE0);
-            gl.bindTexture(gl.TEXTURE_2D, texture);
+            if(texture !== undefined){
+                gl.activeTexture(gl.TEXTURE0);
+                gl.bindTexture(gl.TEXTURE_2D, texture);
+            }
             if(texture1 !== undefined){
                 gl.activeTexture(gl.TEXTURE1);
                 gl.bindTexture(gl.TEXTURE_2D, texture1);
             }
-            setBuffer(textureBuffer,cs.texCoord,textureQuad,2);
+            setBuffer(textureBuffer,cs.texCoords,textureQuad,2);
             setBuffer(positionBuffer,cs.position,positionQuad,2);
             screen[0] = 1/w;
             screen[1] = 1/h;
             gl.uniform2fv(cs.screen, screen);
             if(cs.prep !== undefined){
                 cs.prep();
+            }else{
+                if(texture !== undefined){
+                    gl.uniform1i(cs.texture0, 0);  // texture unit 0
+                }
+                if(texture1 !== undefined){
+                    gl.uniform1i(cs.texture1, 1);  // texture unit 1                 
+                }
             }
         },   
+        setMultiTexture : function(textures){
+            for(var i = 0; i < textures.length; i ++){
+                gl.activeTexture(gl["TEXTURE"+i]);
+                gl.bindTexture(gl.TEXTURE_2D, textures[i]);
+                gl.uniform1i(cs["texture"+i], i);  // texture unit 0
+            }
+            
+            
+        },
         drawGrid : function(originX,originY,scaleXY){
             var startGridSize = Math.pow(gridSteps,Math.floor(Math.log((32 * gridSteps) / scaleXY) / Math.log(gridSteps) - 1.0));
             var fade = Math.pow(((startGridSize * scaleXY)-(gridSteps/2))/(32-gridSteps/2),gridColours[12]);
@@ -159,12 +177,18 @@ var fullScreenRender = (function(){
         },
         
     
-        draw : function(originX,originY,scaleXY){
+        draw : function(originX,originY,scaleXY,scaleY){
             origin[0] = (-originX) * screen[0];
             origin[1] = (h-originY) * screen[1];            
             scale[0] = scaleXY;
-            scale[1] = scaleXY;
+            scale[1] = scaleY === undefined ? scaleXY :scaleY;
             gl.uniform2fv(cs.origin, origin);
+            gl.uniform2fv(cs.scale, scale);
+            gl.drawArrays(gl.TRIANGLES, 0, 6);
+        },
+        drawScale : function(scaleXY,scaleY){
+            scale[0] = scaleXY;
+            scale[1] = scaleY === undefined ? scaleXY :scaleY;
             gl.uniform2fv(cs.scale, scale);
             gl.drawArrays(gl.TRIANGLES, 0, 6);
         },

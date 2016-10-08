@@ -1,13 +1,8 @@
-/* This object is just a place holder and has none of the required functionality yet. */
-
-
-// this interface provides a way of managing render targets. 
+/* Utility for creating named frame buffers */
 var renderTargets = (function(){
-    
-    
     var textures = {};
     var gl;
-    var API = {
+    var API = {        
         textures : textures,
         createTarget : function(name,width,height){
             var tex = textures[name];
@@ -37,6 +32,19 @@ var renderTargets = (function(){
         setDefaultTarget : function(){
             gl.bindFramebuffer(gl.FRAMEBUFFER,null);
             gl.viewport(0, 0, gl.canvas.width,gl.canvas.height);    
+        },
+        putImageInBuffer : function(gl,tex,image){
+            if(typeof tex === "string"){
+                tex = this.textures[tex];
+            }
+            if(tex === undefined || tex === null || tex.texture === undefined){
+                throw new ReferenceError("renderTargets.putImageInBuffer requires a valid renderTargets.texture container");
+            }
+            if(tex.width !== image.width || tex.height !== image.height){
+                console.warn("Can not put image in buffer. Image size does not match. Stay tuned, will have options to deal with this soon.");
+                return;
+            }
+            webGLHelper.setTextureData(gl,tex.texture,image,"RGBA","UNSIGNED_BYTE");
         },
         canvasResized : function(webGL){
             gl = webGL.gl;

@@ -1,28 +1,168 @@
+/*==================================================================================================
+ Non standard shaders.
+ Use glHelper.js interface webGLHelper to compile the shaders by name
+ shader = webGLHelper.createProgram(gl,name); // gl is webGL/2 context returns a shader container.
+          Errors and warning will throw or report to the console with line and error
+          There are a host of syntax errors possible. These errors are development only and should 
+          not be thrown in tested production
+ shader.program is the program for gl.useProgram
+ shader.name is the name of the shader (see #name directive)
+ shader.id is a ID unquie to this instance of webGLHelper
+ Shader will also have other properties as defined in the shader code.
+ 
+ You add shaders to webGLHelper interface with webGLHekper.addShader(name,stringSource). When adding 
+ nothing is done to the code. It is just as a store. The source string can come from anywhere
+ 
+ The additional webGLHelper.addUtillity(name,arrayOfFunctions) adds javascript functions to the 
+ named shader. The array contains utility objects with the following structure
+    name : the name as a string of the utility function. This is added to the shader container.
+    func : The javascript function that is assigned to shader name.
+ 
+ When the shader is compiled all the utility functions are  added and bound to the shader container.
+ They can be called shader.nameUtility();
+ 
+ 
+ Constants
+ 
+ The function webGLHelper.createProgram(gl,name,consts) has the optional argument consts which is an
+ array of constants to add to the shader. consts contains objects with name value pairs and is a 
+ simple substitution of the consts custom directives.
+ For example
+ 
+     Shader code
+     
+         const float HI_VAL = <%HI_VAL>;  // shader code
+     
+     The value of the const HI_VAL can be set with
+     
+         webGLHelper.createProgram(gl,"myShader",[{name:"HI_VAL",value:0.01}); 
+     
+     Which will modify all occurrences of <%HI_VAL> with 0.01 resulting in
+     
+         const float HI_VAL = 0.01;  // shader code
+         
+ Constants can be used anywhere and are added before directive compile and shader compile. 
+ 
+ Example
+ 
+      Shader source
+      
+      gl_FragColor = texture2D(texture,tex) <%Colour>;
+      
+      Javascript
+      
+      consts = [];
+      consts[0] = {
+          name : "Colour",
+          value : "* vec4(255.0,0.0,0.0,1)",
+      }
+ 
+      Shader becomes
+      gl_FragColor = texture2D(texture,tex) * vec4(255.0,0.0,0.0,1);
+ 
+ Constants can also be defined in the shader with the #% directive. This provides a default value
+ for the constant if not supplied with createProgram.
+ 
+ Example
+     #%Colour = * vec4(0.0,0.0,0.0,1);  // the default for <%Colour>
+ Will set <%Colour> 
+      gl_FragColor = texture2D(texture,tex) *vec4(255.0,0.0,0.0,1);
+      
+      Note that spaces are removed from #% constants
+ 
+
+
+ Custom Directives.
+ 
+      Custom directives are defined with a perfixed # character followed by the directive name. The
+      compiled and linked shader will have all these directives removed.
+      
+ List of directives
+ #type defines the shader type fragment or vertex
+ #name defines the name of the program the shader is associated with. (use to reference shader)
+ #include adds code to the shader from a named source.
+       #include shaderSetup; // add the shader source code found in shaderSetup
+ #uniform and #attribute automaticly add the variable location to the shader as the name given in  
+       in the shader source code.
+       For example 
+          #uniform vec2 mouse;  // shader source code
+       The location is then found and added as shader.mouse. You can then set the value with       
+           gl.uniform2fv(shader.mouse,data);  // javascript
+       These are generally used to define standard shared variables across common shader functions.
+       For unique to shader uniforms use #shadow directive
+ #shadow followed by "uniform" adds a named shadow (copy) object for easy access to variable. 
+       For example 
+           #shadow uniform vec3 mydata;
+       Creates a named object shader.myData which has the following properties 
+           shader.myData.shadow An typed array to hold the data 
+           shader.myData.location The location interface
+           shader.myData.set(gl) A helper function bound to shader.myData that will set the uniform
+                data to the shadow values stored in the type array shader.
+                
+       Example usage
+           #shadow uniform vec2 mouse;  // in the shader
+       is compiled to 
+           uniform vec2 mouse;  // in the shader
+       The shader object returned by webGLHelper.createProgram(gl,name) will have the property mouse
+           var shader = webGLHelper.createProgram(gl,name);  // create shader
+           gl.useProgram(shader.program);                    // bind shader
+           shader.mouse.shadow[0] = mouseX;                  // set shadow values
+           shader.mouse.shadow[1] = mouseY;
+           shader.mouse.set(gl);                             // set the shader uniform to the shadow
+           
+==================================================================================================*/
+
+
+
 
 // curly braces are just from my folding system
 {webGLHelper.addShader("backgroundImage",`
             #type vertex;    
             #name backgroundImage;
-            #attribute vec4 position;
-            #attribute vec2 texCoord;  
-            varying vec2 tex;  
-            #uniform vec2 screen;
-            //#uniform vec2 origin; // origin is ignored..
-            #uniform vec2 scale;
+            #include simplePosTexture;
+            #include screenScale;
             void main() {
                 gl_Position = position * vec4(scale.x,-(screen.y / screen.x) * scale.y,1.0,1.0);
-                tex = texCoord;
+                tex = texCoords;
             }`);}
 {webGLHelper.addShader("backgroundImage",`
             #type fragment;      
             #name backgroundImage;
             precision mediump float;
-            #uniform sampler2D texture;
-            varying vec2 tex;  
+            #include screenScale;
+            #include textures1;            
             void main() {
-                gl_FragColor = texture2D(texture,tex);
+                gl_FragColor = texture2D(<%t1>,tex);
             }`);
 }
+{webGLHelper.addShader("bgThreshold",`
+            #type vertex;    
+            #name bgThreshold;
+            #include simplePosTexture;
+            #include screenScale;
+            void main() {
+                gl_Position = <%pos> * vec4(scale.x,-(screen.y / screen.x) * scale.y,1.0,1.0);
+                tex = <%coords>;
+            }`);}
+{webGLHelper.addShader("bgThreshold",`
+            #type fragment;      
+            #name bgThreshold;
+            precision mediump float;
+            #include screenScale;
+            #include textures1;            
+
+            #%level = 0.9; // defined constant
+            
+            void main() {
+                vec4 v = texture2D(<%t1>,tex);
+                v.x = v.x < <%level> ? (v.x < <%level>/2.0 ? (v.x < <%level>/3.0 ? 0.0: 0.33): 0.66) : 1.0;
+                v.y = v.y < <%level> ? (v.y < <%level>/2.0 ? (v.y < <%level>/3.0 ? 0.0: 0.33): 0.66) : 1.0;
+                v.z = v.z < <%level> ? (v.z < <%level>/2.0 ? (v.z < <%level>/3.0 ? 0.0: 0.33): 0.66) : 1.0;
+                gl_FragColor = v;
+            }`);
+}
+//webGLHelper.setShaderOption("bgThreshold",{showPreCompile:true});
+//webGLHelper.setShaderOption("backgroundImage",{showPreCompile:true});
 
 {webGLHelper.addShader("fillScreen",`
             #type vertex;    
@@ -118,25 +258,21 @@
 {webGLHelper.addShader("grid",`
             #type vertex;      
             #name grid;
-            #attribute vec4 position; // base quad
-            #attribute vec2 texCoord;
-            #uniform vec2 origin;  // origin in pixels
-            varying vec2 tex;    
+            #include simplePosTexture;
+            #include origin_scaleScreen;
             void main() {
-                gl_Position = position;
-                tex = vec2(1.0,-1.0) * texCoord + origin;
+                gl_Position = <%pos>;
+                <%tex> = vec2(1.0,-1.0) * <%coords> + <%origin>;
             }
         `);}
 {webGLHelper.addShader("grid",`
             #type fragment;      
             #name grid;
-            precision mediump float;
-            #uniform sampler2D texture;  
-            varying vec2 tex;  // incoming texture coords
+            precision mediump float;            
+            #include origin_scaleScreen;
+
             // input colours checker1,checker2,gridcolour,extra (checkerAlpha1,checkerAlpha2,lineAlpha)
             #uniform vec3 colours[5];
-            //#uniform vec2 scale;   // scale
-            #uniform vec2 screen;  // inverse screen resolution
             #uniform vec4 desc; // grid size, alpha fades,
             const vec2 one = vec2(1.0,1.0);
             void main(){
@@ -145,29 +281,29 @@
                 vec4 gridColour = vec4(colours[2],colours[3].z);
                 vec4 rCol;                
                 float a,aa;
-                vec2 lineWidth = screen * colours[4].y;
-                vec2 m = screen * desc.x;
+                vec2 lineWidth = <%screen> * colours[4].y;
+                vec2 m = <%screen> * desc.x;
                 vec2 m1  = m * desc.w ;
                 vec2 m2  = m1 * desc.w ;       
                 vec2 gl1;  // grid lines 0-2;   
                 a = desc.y;   
                 // find horizontal and vertical grid lines. 
                 if(colours[3].z <= 1.0){ // only 2 levels of lines
-                    gl1 = (one - step(lineWidth, mod(tex, m1))) * a;
+                    gl1 = (one - step(lineWidth, mod(<%tex>, m1))) * a;
                     a = 1.0-a;
-                    gl1 += (one - step(lineWidth, mod(tex, m2))) * a;
+                    gl1 += (one - step(lineWidth, mod(<%tex>, m2))) * a;
                 }else{                
                     aa = 0.5 * desc.z;
-                    gl1 = (one - step(lineWidth, mod(tex, m)));
+                    gl1 = (one - step(lineWidth, mod(<%tex>, m)));
                     gl1 *=  a * aa;
-                    gl1 += (one - step(lineWidth, mod(tex, m1))) * (aa + (1.0 - aa) * a);
+                    gl1 += (one - step(lineWidth, mod(<%tex>, m1))) * (aa + (1.0 - aa) * a);
                     a = 1.0 - a;
-                    gl1 += (one - step(lineWidth, mod(tex, m2))) * a;
+                    gl1 += (one - step(lineWidth, mod(<%tex>, m2))) * a;
                 }
                 // get grid pattern
-                vec2 aa1 = step(m / 2.0 , mod(tex, m));
-                vec2 aa2 = step(m1 / 2.0, mod(tex, m1));
-                vec2 aa3 = step(m2 / 2.0, mod(tex, m2));
+                vec2 aa1 = step(m / 2.0 , mod(<%tex>, m));
+                vec2 aa2 = step(m1 / 2.0, mod(<%tex>, m1));
+                vec2 aa3 = step(m2 / 2.0, mod(<%tex>, m2));
                 // mix grid pattern
                 rCol = mix(
                         checkerColour, 
@@ -177,85 +313,6 @@
                 // mix  in grid lines
                 gl_FragColor = mix(rCol, gridColour, max(gl1.x, gl1.y));
             }
-        `);}
-{webGLHelper.addShader("grid1",`
-            #type vertex;      
-            #name grid1;
-            #attribute vec4 position; // base quad
-            #attribute vec2 texCoord;
-            varying vec2 tex;    
-            void main() {
-                gl_Position = position;
-                tex = vec2(1.0,-1.0) * texCoord;
-            }
-        `);}
-{webGLHelper.addShader("grid1",`
-            #type fragment;      
-            #name grid1;
-            precision mediump float;
-            #uniform sampler2D texture;  
-            varying vec2 tex;  // incoming texture coords
-
-            // input colours checker1,checker2,gridcolour,extra (checkerAlpha1,checkerAlpha2,lineAlpha)
-            #uniform vec3 colours[5];
-            #uniform vec2 scale;   // scale
-            #uniform vec2 origin;  // origin in pixels
-            #uniform vec2 screen;  // inverse screen resolution
-
-            float startGridSize = pow(8.0, floor(log(256.0 / scale.x) / log(8.0) - 1.0));
-            
-
-            vec4 checkerColour1 = vec4(colours[0],colours[3].x);
-            vec4 checkerColour = vec4(colours[1],colours[3].y);
-            vec4 gridColour = vec4(colours[2],colours[3].z);
-            vec4 rCol;
-            float a = pow(1.0-(((startGridSize * scale.x)-4.0)/28.0),colours[3].x);
-            vec2 m = screen * startGridSize * scale;
-            vec2 m1  = m * 8.0 ;
-            vec2 m2  = m1 * 8.0 ;
-            vec2 pix;  // scaled translated origin.
-            vec2 aa1;  // grid patterns 0-2;
-            vec2 aa2;
-            vec2 aa3;
-            vec2 gl1;  // grid lines 0-2;
-
-            float gridLine;
-
-            
-            void main(){
-                // get text offset to origin  
-                pix = tex+  origin * screen;
-                // find horizontal and vertical grid lines. 
-                if(colours[3].z <= 1.0){
-                    gl1.x = (1.0 - step(screen.x * colours[3].y, mod(pix.x, m1.x))) * (1.0 - a);
-                    gl1.y = (1.0 - step(screen.y * colours[3].y, mod(pix.y, m1.y))) * (1.0 - a);
-                    gl1.x += (1.0 - step(screen.x * colours[3].y, mod(pix.x, m2.x))) * a;
-                    gl1.y += (1.0 - step(screen.y * colours[3].y, mod(pix.y, m2.y))) * a;
-                }else{
-                    gl1.x = (1.0 - step(screen.x * colours[3].y, mod(pix.x, m.x))) * (1.0 - a);
-                    gl1.y = (1.0 - step(screen.y * colours[3].y, mod(pix.y, m.y))) * (1.0 - a);
-                    gl1.x += (1.0 - step(screen.x * colours[3].y, mod(pix.x, m1.x)));
-                    gl1.y += (1.0 - step(screen.y * colours[3].y, mod(pix.y, m1.y)));
-                    gl1.x += (1.0 - step(screen.x * colours[3].y, mod(pix.x, m2.x))) * a;
-                    gl1.y += (1.0 - step(screen.y * colours[3].y, mod(pix.y, m2.y))) * a;
-                    
-               // }
-                gridLine = gl1.x + gl1.y;
-
-                // get grid pattern
-                aa1 = step(m/2.0 , mod(pix, m));
-                aa2 = step(m1/2.0, mod(pix, m1));
-                aa3 = step(m2/2.0, mod(pix, m2));
-                // mix grid pattern
-                rCol = mix(
-                        checkerColour, 
-                        checkerColour1,
-                        abs(aa2.x - aa2.y) + mix(abs(aa1.x - aa1.y), abs(aa3.x - aa3.y), a)
-                );
-                // mix  in grid lines
-                gl_FragColor = mix(rCol, gridColour, gridLine);
-            }
-        
         `);}
 {webGLHelper.addShader("sprite",`
             #type vertex;      
@@ -300,7 +357,7 @@
             #attribute vec2 texcoord;
             // pos, scale, textPos (also tile count), textScale,rotation,screenAspect,alpha,scale,center,tile
             #uniform vec2 desc[8];   
-            varying vec2 v_texcoord;
+            varying vec2 tex;
             varying float alpha;
             const vec2 proj = vec2(-0.5, 0.5);
             void main() {
@@ -312,25 +369,25 @@
                tMat[0][1] = -rot.y * desc[4].y;
                tMat[1][1] = rot.x * desc[4].y;
                gl_Position  = (tMat * vec4(pos, position.zw) * vec4(desc[2],1,1) ) + vec4((desc[0] + proj) * 2.0, 0, 0);
-               v_texcoord = texcoord ;
+               tex = texcoord ;
                alpha = desc[5].x;
             }`);}
 {webGLHelper.addShader("tiles",`
             #type fragment;      
             #name tiles;
             precision mediump float;
-            varying vec2 v_texcoord;
+            varying vec2 tex;
             varying float alpha;
             #uniform vec2 tile[3];
             const vec2 mir = vec2(1.0,1.0);
-            uniform sampler2D texture;
+            uniform sampler2D texture0;
             void main() {
-               vec2 mirror = step(mir,mod(v_texcoord *  tile[2],tile[2]));
-               vec2 tiles = abs(mirror- mod(v_texcoord *  tile[2],1.0)) * tile[1] + tile[0];
+               vec2 mirror = step(mir,mod(tex *  tile[2],tile[2]));
+               vec2 tiles = abs(mirror- mod(tex *  tile[2],1.0)) * tile[1] + tile[0];
                if(alpha >= 1.){
-                    gl_FragColor = texture2D(texture, tiles);
+                    gl_FragColor = texture2D(texture0, tiles);
                }else{
-                    gl_FragColor = texture2D(texture, tiles) * vec4(1.0 , 1.0 , 1.0 , alpha);
+                    gl_FragColor = texture2D(texture0, tiles) * vec4(1.0 , 1.0 , 1.0 , alpha);
                }
             }`);}
 {webGLHelper.addShader("lines",`
@@ -526,7 +583,7 @@
             #type vertex;      
             #name tileGrid;
             #attribute vec4 position; // base quad
-            #attribute vec2 texCoord;
+            #attribute vec2 texCoords;
             varying vec2 tex;    
             varying vec2 mapTex;    
             #uniform vec2 scale;   // scale
@@ -535,7 +592,7 @@
             #uniform vec2 tiles[3]; // tile (width,height),map (width,height),tile pixel relative (width,height)
             void main() {
                 gl_Position = position;
-                vec2 texC = vec2(1.0,-1.0) * texCoord + origin;
+                vec2 texC = vec2(1.0,-1.0) * texCoords + origin;
                 mapTex = (texC / screen / tiles[0] / tiles[1]) * scale;
                 tex = texC * tiles[2] * scale;
             }
@@ -544,7 +601,7 @@
             #type fragment;      
             #name tileGrid;
             precision mediump float;
-            #uniform sampler2D texture;  
+            #uniform sampler2D texture0;  
             #uniform sampler2D map;  
             varying vec2 tex;  // incoming texture coords
             varying vec2 mapTex; // incoming map coords    
@@ -555,7 +612,7 @@
                             floor(mod(t.x, tileSize[0].x)),
                             floor(t.x / tileSize[0].x)
                             ) * tileSize[1];
-                gl_FragColor = texture2D(texture,mod(tex, tileSize[1]) + tile);
+                gl_FragColor = texture2D(texture0,mod(tex, tileSize[1]) + tile);
             }
         `);
 }
@@ -650,30 +707,134 @@
 {webGLHelper.addShader("frameBufferTestB",`
             #type vertex;      
             #name frameBufferTestB;
-            #attribute vec4 position; // base quad
-            #attribute vec2 texCoords;
-            varying vec2 tex;    
+            #include simplePosTexture;
+            #include screenScale;
             void main() {
-                gl_Position = position;
-                tex = texCoords ;
-            }
+                gl_Position = position * vec4(scale.x,-(screen.y / screen.x) * scale.y,1.0,1.0);
+                tex = texCoords;
+            }            
         `);
 }
 {webGLHelper.addShader("frameBufferTestB",`
             #type fragment;      
             #name frameBufferTestB;
             precision mediump float;
-            #uniform sampler2D texture;
+            #include textures3;
+            #include screenScale;
+            #%textureSize = 512.0;
+            #%atrractLen = 2212.0;
+ 
+            
+            #uniform vec2 size;
+            #shadow uniform vec3 mouse; 
+            const float MIX = 0.0000191;
+
+            void main() {
+                vec4 pixA = texture2D(texture0,tex);
+                vec4 pixA1 = texture2D(texture0,tex+vec2(1.0/<%atrractLen>,0.0));
+                vec4 pixA2 = texture2D(texture0,tex + vec2(-1.0/<%atrractLen>,0.0) );
+                vec4 pixA3 = texture2D(texture0,tex + vec2(0.0,1.0/<%atrractLen>) );
+                vec4 pixA4 = texture2D(texture0,tex + vec2(0.0,-1.0/<%atrractLen>) );
+                vec2 likeAttr = vec2(0.0,0.0);
+                float d1 = (1.0-length(pixA1-pixA))*1.0;
+                float d2 = (1.0-length(pixA2-pixA))*1.0;
+                float d3 = (1.0-length(pixA3-pixA))*1.0;
+                float d4 = (1.0-length(pixA4-pixA))*1.0;
+                likeAttr += d1*vec2(1.0/<%atrractLen>,0.0);
+                likeAttr += d2*vec2(-1.0/<%atrractLen>,0.0);
+                likeAttr += d3*vec2(0.0,1.0/<%atrractLen>);
+                likeAttr += d4*vec2(0.0,-1.0/<%atrractLen>);
+                likeAttr *= vec2(pixA.x,pixA.y)*pixA.z;
+               //likeAttr = normalize(likeAttr)/(<%textureSize>/2.0);
+               float lla = length(likeAttr);
+                float ang = 0.01*mouse.x*lla;
+                vec2 texa = tex - vec2(0.5,0.5);//+likeAttr*1.0;
+                //vec2 texa = tex - vec2(mouse.y,mouse.z);
+                float le = length(texa)+0.01;
+                float dir = atan(texa.y,texa.x)*lla;
+                le = (sin(((pixA.x-pixA.y)+1.0)/5.0)+1.2) / (le *2.0 * le);
+               // if(le < 0.15){
+              //      ang = 0.0;
+               //}else{
+                    ang = le;//-0.15;
+                   ang *= 0.0015/cos(d1);
+               // }
+               ang *= cos(ang*10.0*pixA.z*d2)*0.6*pixA.x*(d4+d2+d3+d1);
+                vec2 texT = vec2(
+                   texa.x * cos(ang) + texa.y * -sin(ang),
+                   texa.x * sin(ang) + texa.y * cos(ang)
+               );
+                texT *= 1.0/(0.9999 + cos(mouse.x + dir/(10.0*le*d3)) *0.001);
+                texT +=  vec2(0.5,0.5);
+                vec4 pix = texture2D(texture0,texT);
+                float mm = 1.0-le*0.01*dir;;
+                vec2 fromC = texT - vec2(mouse.y+0.5,mouse.z+0.5);
+                float dd = atan(fromC.y,fromC.x)*14.0* sin(mouse.x *((pix.x + pix.y) * 3.14))*texT.x * texT.y;
+                dd += atan(pix.y,pix.x)*14.0* sin(mouse.x *((pix.x + pix.y) * 3.14))*texT.x * texT.y;
+                le = length(fromC);
+                float len = sin(le * le) * 0.1;
+                fromC = normalize(fromC) / <%textureSize>;
+                vec2 off = vec2(-fromC.y* (texT.y-0.5),fromC.x);                
+                off +=  normalize(vec2(
+                        sin(mouse.x * len + dd * pix.z/d4) ,
+                        cos(mouse.x * len + dd * pix.y/d4)
+                   ))/<%textureSize>;
+                off += vec2((pix.x -0.5)/ d4,(pix.y - 0.5)/d3)/(<%textureSize>/4.0);
+              //  off += likeAttr*1.0;
+                off = (normalize(off)/(<%textureSize>/4.0));///likeAttr;
+                vec4 ec = vec4(
+                    mm*MIX+(cos(mouse.x*21.31*pix.y*d1)*0.071*d3),
+                    mm*MIX+(sin(mouse.x*31.21*pix.z*d2)*0.071*d2),
+                    mm*MIX+(cos(mouse.x*11.11*pix.x*d3)*0.071*d1),
+                    mm*MIX);
+
+                gl_FragColor = texture2D(texture0,texT + off) * vec4(1.0-mm*MIX) +ec/10.0 + texture2D(texture1,texT + vec2(mouse.x*0.1,mouse.x/pix.y)) * ec;
+
+            }`);
+}
+{webGLHelper.addShader("frameBufferTestB_OLD",`
+            #type fragment;      
+            #name frameBufferTestB_OLD;
+            precision mediump float;
+            #uniform sampler2D texture0;
+            #uniform sampler2D texture1;
+            #uniform sampler2D texture2;
             varying vec2 tex;  
             
             #uniform vec2 size;
+            #shadow uniform vec3 mouse; 
 
-            const float COLOR_MIN = 0.2;
-            const float COLOR_MAX = 0.4;
+            const float MIX = 0.01;
 
             void main() {
-                float v = (COLOR_MAX - texture2D(texture, gl_FragCoord.xy / size).y) / (COLOR_MAX - COLOR_MIN);
-                gl_FragColor = texture2D(texture,tex);//vec4(v, v, v, 0.5);
+                float mm = 1.0;;
+                vec4 pix = texture2D(texture2,tex);
+                vec4 pix1 = texture2D(texture0,tex);
+                //pix.x = 0.5;
+                //pix.y = 0.5;
+                pix1 -= vec4(0.5,0.5,0.0,0.0);
+                //pix1 /= 256.0;
+
+                float mome = pix1.z/256.0;//length(vec2(pix1.x,pix1.y))/256.0 ;
+               // pix1 /= 256.0;
+                //pix1 *= mome;
+                pix -= vec4(0.5,0.5,0.0,0.0);
+                pix /= 256.0;
+                
+                vec2 off = vec2(pix.x ,pix.y);
+                float ll = length(off);
+                off += -normalize(vec2(pix1.x* cos(mouse.x*pix.x*200.0),pix1.y* sin(mouse.x*pix.y*200.0))) * (mome + ll)  ;
+                vec4 col = texture2D(texture0,tex + off);
+                mome = length(off) *256.0+ 0.5;
+                col.z = mome;
+                vec2 o = vec2(cos(mouse.y*sin(tex.x*6.15)),sin(mouse.z*cos(tex.y*6.0))) /2.0;
+
+                gl_FragColor = col * vec4(vec2(1.0-mm*MIX),1,1) + texture2D(texture1,tex +o ) * 
+                vec4(
+                    mm*MIX+(cos(mouse.x/13.*pix.y)*0.01),
+                    mm*MIX+(cos(mouse.x/12.*pix.z)*0.01),
+                    mm*MIX*mome,//mm*MIX+(cos(mouse.x/11.*pix.x)*0.01),
+                    mm*MIX) ;
             }`);
 }
 

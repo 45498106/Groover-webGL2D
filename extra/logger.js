@@ -6,6 +6,12 @@ var logs = (function(){
     var logSpanId = 0;
     var newLineLog = false;    
     var logs;
+    var position = {
+        top : "7px",
+        left : "7px",
+        width : "200px",
+        height : "420px",
+    }
     var classNames = {
         prefix : "cMess",
         error : "Error",
@@ -14,20 +20,39 @@ var logs = (function(){
         sys : "Sys",
         counter : "Counter",
         logDisplay : "logDisplay",
+        controls : "logControls",
     }
+    var styleElement,styleContainor,element;
     function createStyleContent(){
         return `
         .${classNames.logDisplay} {
             position: absolute;
-            top: 7px;
-            right: 7px;
-            bottom: 45px;
-            left: 1163px;
-            border-width: 37px;
-            max-height: 462px;
-            height: 420px;
-            overflow-y: scroll;   
+            top: ${position.top};
+            left: ${position.left};
+            max-height: ${position.height};
+            max-width: ${position.width};
+            width: ${position.width};
+            border: black solid;
+            border-width: 1px;
+            overflow-y: auto;   
+            padding : 4px;
+            z-index :1000;
+            font-size : 10px;
         }    
+        .${classNames.controls} {
+            position: sticky;
+            top : 0px;
+            left : unset;
+            padding :0px 4px 0px 4px;
+            background : red;
+            color : white;
+            font-size : 10px;
+            height :12px;
+            text-align: center;
+            border: white 1px solid;
+            cursor : pointer;
+            z-index :1001;
+        }
         .${classNames.prefix} {
             color: ${API.color};
             background: ${API.background};
@@ -45,7 +70,6 @@ var logs = (function(){
             display: block;
             word-wrap: break-word;
         }
-
         .${classNames.prefix + classNames.sys + classNames.error} {
             color: ${API.colorError};
             background: ${API.background};
@@ -68,7 +92,10 @@ var logs = (function(){
             word-wrap: break-word;
             font-weight: 600; 
             font-size:x-small;    
-        }`;
+        }
+        
+        
+        `;
     }
 
 
@@ -135,12 +162,15 @@ var logs = (function(){
         }
         log();
     }
-
     function logg(data){
         newLineLog = true;
         log(data);
     }
     function log(data) {
+        if(logs === undefined){
+            console.log(data);
+            return;
+        }
         logADataS = "";
         var str = "";
         if(data !== undefined && data !== null && typeof data.toString === "function"){
@@ -213,9 +243,6 @@ var logs = (function(){
         logs.innerHTML += str;
         logs.scrollTop = logs.scrollHeight;
     }
-    
-
-    
     function logSysTrace(data){
         data.each(l=>{
             if(l.indexOf("getCallStackTrace") === -1 && l.indexOf("consoleWarn") === -1){
@@ -241,17 +268,22 @@ var logs = (function(){
         logs.scrollTop = logs.scrollHeight;
         
     }
-
     function clearLog() {
         logClear() 
     }
     function logClear() {
         logs.innerHTML = "";
         logs.scrollTop = logs.scrollHeight;
+        if(controls !== undefined){
+            if(controls.close){
+                logs.appendChild(controls.close);
+            }
+            if(controls.clear){
+                logs.appendChild(controls.clear);            
+            }
+        }
 
     }
-
-    
     var API = {
         setElement : function(element){
             logs = element;
@@ -264,19 +296,60 @@ var logs = (function(){
         logP : logP,
         clear : logClear,
         addStyle : function(element){
-            var styleE = document.createElement("style");
-            styleE.innerHTML = createStyleContent();
-            if(element === undefined){
-                element = document.head;
+            styleElement = document.createElement("style");
+            styleElement.innerHTML = createStyleContent();
+            styleContainor = element;
+            if(styleContainor === undefined){
+                styleContainor = document.head;
             }
-            element.appendChild(styleE);
+            styleContainor.appendChild(styleElement);
         },
-        start : function(){
+        setPosition : function(left,top,width,height){
+            position.top = top;
+            position.left = left;
+            position.width = width;
+            position.height = height;
+
+            if(styleElement !== undefined){  // there must be a better way
+                styleContainor.removeChild(styleElement);
+            }
+            createStyleContent();
+        },
+        start : function(options){
             this.addStyle();
-            logs = document.createElement("div");    
-            logs.className = classNames.logDisplay;
-            document.body.appendChild(logs);
-            return logs;
+            element = document.createElement("div");    
+            this.setElement(element);
+            element.className = classNames.logDisplay;
+            if(options){
+                controls = {};
+
+                if(options.closeBox){
+                    controls.close = document.createElement("span");    
+                    controls.close.className = classNames.logDisplay + " " + classNames.controls;
+                    controls.close.textContent = "X";
+                    controls.close.title = "Click to close Log display";
+                    element.appendChild(controls.close);
+                    controls.close.addEventListener("click",function(){
+                        document.body.removeChild(element);
+                    });
+                }
+                if(options.clear){
+                    controls.clear = document.createElement("span");    
+                    controls.clear.className = classNames.logDisplay + " " + classNames.controls;
+                    controls.clear.textContent = "clear";
+                    controls.clear.title = "Click to clear the log";
+                    element.appendChild(controls.clear);
+                    controls.clear.addEventListener("click",function(){
+                        clearLog();
+                    });
+                    
+                    
+                }
+            }
+            
+            
+            document.body.appendChild(element);
+            return element;
         },
 
         background : "#40567D",

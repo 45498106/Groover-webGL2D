@@ -1,6 +1,11 @@
 body {
     font-family: arial,sans-serif;
 }
+
+.homeLink {
+    
+    
+}
 /* Title at top of page */
 .title {
     position :absolute;
@@ -38,7 +43,7 @@ body {
     z-index : 200;
     text-align : center;
     font-weight : 700;   
-    top: 50px;
+    top: 60px;
     width: 80%;
     left: 10%;    
     background: #f2f2f2;
