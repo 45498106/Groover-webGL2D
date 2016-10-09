@@ -7,7 +7,7 @@ var tiles = {
     tilesX : 16,  // tiles across. This example is 8 by 8 pixel tiles s image is 8*8 64 by 32 * 8 256 pixels in size
     tilesY : 11,
     tiles : [],  // must have this array or tiles will not be created
-    textureOptions : {
+    options : {
         sampler : "clampNear",    
     }
 };
@@ -237,8 +237,8 @@ window.addEventListener("load",function(){
         fullScreenRender.shaders.tileGrid.prep({map : map, tiles : tiles});
         updateStats("loaded images"); 
     };
-    spriteTile.loadSpriteSheet(tiles);    
-    map = spriteTile.createTileMap(1024,1024,16*11);
+    imageManager.loadSpriteSheet(tiles);    
+    map = imageManager.createTileMap(1024,1024,16*11);
     if(frameRate){
         frameRate.displayCallback = updateStats;
         canvasMouse.renderStack.push(frameRate.update);

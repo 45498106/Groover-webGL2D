@@ -2,30 +2,7 @@ var lastMx;
 var lastMy;
 var screenBounds = {top : 0, bottom : 0, left : 0, right : 0};
 var gridBounds = {top : 0, bottom : 0, left : 0, right : 0};
-function Chaser(value,accel,drag){
-    this.value = value;
-    this.real = value;
-    this.chase = 0;
-    this.accel = accel;
-    this.drag = drag;
-}
-Chaser.prototype = {
-    update : function(){
-        if(this.accel === 1){
-            this.chase = 0;
-            this.real = this.value;            
-        }else{
-            this.chase += (this.value-this.real) * this.accel;
-            this.chase *= this.drag;
-            this.real += this.chase;
-        }
-    },
-    snap : function(value){
-        this.chase = 0;
-        this.value = value !== undefined ? value : this.value;
-        this.real = this.value;
-    }
-}
+
 const ACCELERATION = 0.8;
 const DRAG = 0.1; 
 var originX = new Chaser(0,ACCELERATION,DRAG);
@@ -304,13 +281,7 @@ window.addEventListener("load",function(){
     statsElement.textContent = "Loading...";
     canvasMouse.create();
     createUI();
-    /*var l = logs.start();
-    l.style.zIndex = 1000;
-    l.style.left = "10px";
-    l.style.width = "200px";
-    l.style.height = "300px";
-    l.style.top = "20px";
-    logs.log("Hi there :)");*/
+
     canvasMouse.onresize = resizedCanvas;    
     originX.value = canvasMouse.canvas.width/2;
     originY.value = canvasMouse.canvas.height/2;

@@ -365,7 +365,7 @@ window.addEventListener("load",function(){
         
     };
     
-    spriteTile.loadSpriteSheet(gameSprites);    
+    imageManager.loadSpriteSheet(gameSprites);    
     if(frameRate){
         frameRate.displayCallback = updateStats;
         canvasMouse.renderStack.push(frameRate.update);

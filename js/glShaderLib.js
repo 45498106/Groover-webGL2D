@@ -6,9 +6,9 @@
             #uniform sampler2D texture0;
             #uniform sampler2D texture1;
             #uniform sampler2D texture2;
-            #%t1 = texture0;
-            #%t2 = texture1;
-            #%t3 = texture2;
+            #$t1 = texture0;
+            #$t2 = texture1;
+            #$t3 = texture2;
             `
 );}
 {webGLHelper.addLib("textures2",`
@@ -16,24 +16,25 @@
 #Fragment            
             #uniform sampler2D texture0;
             #uniform sampler2D texture1;
-            #%t1 = texture0;
-            #%t2 = texture1;
+            #$t1 = texture0;
+            #$t2 = texture1;
             `
 );}
 {webGLHelper.addLib("textures1",`
 #Vertex
 #Fragment            
             #uniform sampler2D texture0;
-            #%t1 = texture0;
+            #$t1 = texture0;
             `
 );}
 {webGLHelper.addLib("simplePosTexture",`
 #Vertex
             #attribute vec4 position;
-            #attribute vec2 texCoords;  
-            #%pos = position;
-            #%coords = texCoords;
-#Fragment            
+            #attribute vec2 texCoords;
+            #$pos = position;
+            #$coords = texCoords;
+#Fragment
+
             `
 );}
 {webGLHelper.addLib("screenScale",`
@@ -41,12 +42,12 @@
             #uniform vec2 screen;
             #uniform vec2 scale;
             varying vec2 tex;  
-            #%screen = screen;
-            #%scale = scale;
-            #%tex = tex;
+            #$screen = screen;
+            #$scale = scale;
+            #$tex = tex;
 #Fragment            
             varying vec2 tex;  
-            #%tex = tex;
+            #$tex = tex;
             `
 );}
 {webGLHelper.addLib("screenScaleOrigin",`
@@ -64,14 +65,14 @@
 #Vertex
             #uniform vec2 origin;
             varying vec2 tex;  
-            #%origin = origin;
-            #%tex = tex;
+            #$origin = origin;
+            #$tex = tex;
 #Fragment            
             #uniform vec2 screen;
             #uniform vec2 scale;
             varying vec2 tex;  
-            #%screen = screen;
-            #%scale = scale;
-            #%tex = tex;
+            #$screen = screen;
+            #$scale = scale;
+            #$tex = tex;
             `
 );}

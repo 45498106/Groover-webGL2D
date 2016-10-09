@@ -61,49 +61,35 @@ function renderer(){
         bufferSwap[1] = renderTargets.textures.test1;
         bufferToUse = 1;
     }
-    var fBTB = fullScreenRender.shaders.frameBufferTestB;
+    var fBTB = fullScreenRender.shaders.swirl;
     var fBTBMouse= fBTB.mouse;
 
     var renderTarget = bufferSwap[(bufferToUse) % 2];
     var renderSource = bufferSwap[(bufferToUse + 1) % 2];
-    // var renderTarget = bufferSwap[0];
-    //var renderSource = bufferSwap[1];
+
     bufferToUse += 1;
     renderTargets.setTarget(renderTarget);
-    // console.log(bufferToUse);
-    // gl.clearColor(233.0, 0.0, 0.0, 232.0);
-    // gl.clear(gl.COLOR_BUFFER_BIT);
+
     gl.composite.over();
     gl.enable(gl.BLEND);
 
     fullScreenRender.setRenderTarget(renderTarget);
-    // fullScreenRender.prepRender(fullScreenRender.shaders.frameBufferTestB, testImages.textures.test);
-    fullScreenRender.prepRender(fullScreenRender.shaders.frameBufferTestB);//, renderSource.texture, testImages.textures.test);
-    //fullScreenRender.setMultiTexture([renderSource.texture, testImages.textures.test,testImages.textures.direction]);
+    fullScreenRender.prepRender(fullScreenRender.shaders.swirl);
     fullScreenRender.setMultiTexture([renderSource.texture, testImages.textures.normals,testImages.textures.direction]);
-    fBTBMouse.shadow[0] =(canvasMouse.globalTime/100) +  Math.sin(canvasMouse.globalTime/100000) * 100+Math.sin(canvasMouse.globalTime/10000) * 10+Math.sin(canvasMouse.globalTime/1000) * 1;///1000;
-    fBTBMouse.shadow[1] = (mx.real -0.5) * 0.01;
-    fBTBMouse.shadow[2] = (my.real -0.5) * 0.01;
+    fBTBMouse.shadow[0] =(canvasMouse.globalTime/106) +  Math.sin(canvasMouse.globalTime/105600) * 100+Math.sin(canvasMouse.globalTime/14040) * 10+Math.sin(canvasMouse.globalTime/1350) * 10;///1000;
+    fBTBMouse.shadow[1] = Math.sin(canvasMouse.globalTime/6325)*1.021;
+    fBTBMouse.shadow[2] = Math.sin(canvasMouse.globalTime/6456)*1.021;
     fBTBMouse.set(gl);
-//        fullScreenRender.shaders.frameBufferTestB.mouseShadow[0] = canvasMouse.globalTime / 1000;
-//      fullScreenRender.shaders.frameBufferTestB.mouseShadow[1] = mx.real;
-//    fullScreenRender.shaders.frameBufferTestB.mouseShadow[2] = my.real;
-    //gl.uniform3fv(fullScreenRender.shaders.frameBufferTestB.mouse, fullScreenRender.shaders.frameBufferTestB.mouseShadow);
-  //  fullScreenRender.shaders.frameBufferTestB.mouse(gl);
-
     scale.value = 1 + Math.sin(canvasMouse.globalTime / 1000) * 0.2 + Math.sin(canvasMouse.globalTime / 130) * 0.2;
     scale.update();
-    var ss = Math.sin(canvasMouse.globalTime/6000)*0.021 + Math.sin(canvasMouse.globalTime/94972)*0.021;
-    var ss1 =  Math.sin(canvasMouse.globalTime/8560)*0.021 + Math.sin(canvasMouse.globalTime/13946)*0.021;
-    fullScreenRender.drawScale(1/(1.0+ss), 1/-(1.0+ss1)); //-scale.real);
- //   fBTBMouse.shadow[0] = canvasMouse.globalTime/1340;//Math.sin(canvasMouse.globalTime/1000) * 10;///1000;
-   // fBTBMouse.shadow[1] = 0.5 - (mx.real -0.5) * 0.03;
-    //fBTBMouse.shadow[2] = 0.5 - (my.real -0.5) * 0.03;
-  //  fBTBMouse.set(gl);
+    var ss =   Math.sin(canvasMouse.globalTime/6000)*0.0021 + Math.sin(canvasMouse.globalTime/94972)*0.0021+ Math.sin(canvasMouse.globalTime/43946)*0.0006;
+    var ss1 =  Math.sin(canvasMouse.globalTime/8560)*0.0021 + Math.sin(canvasMouse.globalTime/63946)*0.0021+ Math.sin(canvasMouse.globalTime/46946)*0.0004;
+    fullScreenRender.drawScale(1/(1.0+ss), 1/-(1.0+ss1)); 
+
     if(iterations > 1){
         for(var i = 1; i < iterations; i += 2){
-            fullScreenRender.draw(0, 0, 1/(1.0-ss), 1/-(1.0-ss1)); //-scale.real);
-            fullScreenRender.draw(0, 0, (1.0-ss), -(1.0-ss1)); //-scale.real);
+            fullScreenRender.draw(0, 0, 1/(1.0-ss), 1/-(1.0-ss1)); 
+            fullScreenRender.draw(0, 0, (1.0-ss), -(1.0-ss1)); 
         }
     }
 
@@ -157,13 +143,7 @@ var UIInfo = [
             iterations = 1;
             logs.log("Single pass set")
         }
-    },{
-        name : "Triple pass",
-        func : function(){
-            iterations = 1;
-            logs.log("Does northing ATM")
-        }
-    },
+    }
 ];
 
 
@@ -181,7 +161,7 @@ window.addEventListener("load",function(){
     var l = logs.start({closeBox:true,clear:true});
     logs.log("Hi there :)");    
     
-    spriteTile.loadImageSet(testImages);
+    imageManager.loadImageSet(testImages);
     
     
     webGLHelper.createCompositeFilters(canvasMouse.webGL.gl);
@@ -191,7 +171,7 @@ window.addEventListener("load",function(){
     var size = 512;
     renderTargets.createTarget("test",size,size);  // creates a 512,512 texture to render to
     renderTargets.createTarget("test1",size,size);  // creates a 512,512 texture to render to
-    fullScreenRender.addShader("frameBufferTestB",[{name:"textureSize",value:"8192.0"}]);
+    fullScreenRender.addShader("swirl",[{name:"textureSize",value:"8192.0"}]);
     fullScreenRender.addShader("bgThreshold",[{name:"level",value:"0.95"}]);
      if(frameRate){
         frameRate.displayCallback = updateStats;
@@ -209,6 +189,30 @@ window.addEventListener("load",function(){
         ready = true;
         logs.log("Ready");
     }
+    console.log(webGLHelper.queryExtensions(canvasMouse.webGL.gl).join(","));
     
     
 });
+/*
+ANGLE_instanced_arrays,
+EXT_blend_minmax,
+EXT_color_buffer_half_float,
+EXT_frag_depth,
+EXT_shader_texture_lod,
+EXT_texture_filter_anisotropic,
+OES_element_index_uint,
+OES_standard_derivatives,
+OES_texture_float,
+OES_texture_float_linear,
+OES_texture_half_float,
+OES_texture_half_float_linear,
+OES_vertex_array_object,
+WEBGL_color_buffer_float,
+WEBGL_compressed_texture_etc1,
+WEBGL_compressed_texture_s3tc,
+WEBGL_depth_texture,
+WEBGL_draw_buffers,
+WEBGL_lose_context,
+MOZ_WEBGL_lose_context,
+MOZ_WEBGL_compressed_texture_s3tc,
+MOZ_WEBGL_depth_texture*/

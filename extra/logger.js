@@ -44,7 +44,7 @@ var logs = (function(){
             top : 0px;
             left : unset;
             padding :0px 4px 0px 4px;
-            background : red;
+            background : blue;
             color : white;
             font-size : 10px;
             height :12px;
@@ -52,6 +52,12 @@ var logs = (function(){
             border: white 1px solid;
             cursor : pointer;
             z-index :1001;
+            margin: 0px 1px;
+            font-weight: 900;            
+        }
+        .${classNames.controls}:hover {
+            background : red;
+            color : white;
         }
         .${classNames.prefix} {
             color: ${API.color};

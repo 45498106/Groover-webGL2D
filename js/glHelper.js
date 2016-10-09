@@ -196,7 +196,8 @@ var webGLHelper = (function(){
     }
     function setConstants(script,consts = []){
         var foundC = [];
-        script = script.replace(new RegExp("#%.+;","g"), str => {
+        script = script.replace(new RegExp("#\\$.+;","g"), str => {
+            console.log(str);
             var con = str.substr(2,str.length-3).replace(/ /g,"").split("=");
             foundC.push({name : con[0], value : con[1]});
 
@@ -210,18 +211,14 @@ var webGLHelper = (function(){
             });
         });
         consts.forEach(c => {
-            script = script.replace(new RegExp("<%"+c.name+">","g"),c.value);
+            script = script.replace(new RegExp("\\$"+c.name+"(\\W)","g"),c.value+"$1");
 
         });
         foundC.forEach(c => {
-            script = script.replace(new RegExp("<%"+c.name+">","g"),c.value);
+            script = script.replace(new RegExp("\\$"+c.name+"(\\W)","g"),c.value+"$1");
 
         });
         return script;
-            
-            
-        
-        
     }
     function getVariables(script,variables){    // get # delimited variables from shader source
         var name = null;
@@ -334,13 +331,14 @@ var webGLHelper = (function(){
         }
         return vars;
     }
-    function report(gl,item,type,name,source){
+    function report(gl,shader,item,type,name,source){
         var str = type === "shader" ? gl.getShaderInfoLog(item):gl.getProgramInfoLog(item);;
         var error = false;
         str = str.split("\n")
         str.forEach(l => {
             if(l.substr(0,5) === "ERROR"){
                 glErrors.push({message : l,type : type,name : name});
+                console.log(l);
                 var line;
                 if(source !== undefined){
                     var lines = source.split("\n");
@@ -348,13 +346,13 @@ var webGLHelper = (function(){
                     line = "Line "+line+" >> " + lines[line-1];
                 }
                 if(typeof log === "function"){
-                    log(l.replace("ERROR:","Error in: " + name + " "));
-                    if(line){
+                    log(l.replace("ERROR:","Error in: "+shader+" Shader " + name + " "));
+                    if(!isNaN(line) ){
                         log(line);
                     }
                 }else{
-                    console.error(l.replace("ERROR:","Error in: " + name + " "));
-                    if(line){
+                    console.error(l.replace("ERROR:","Error in: "+shader+" Shader " + name + " "));
+                    if(!isNaN(line)){
                         console.log(line);
                     }
                 }
@@ -478,6 +476,15 @@ var webGLHelper = (function(){
             gl.bindTexture(gl.TEXTURE_2D, spriteTile.texture);
             gl.texImage2D(gl.TEXTURE_2D, 0, format, spriteTile.width,spriteTile.height,0,format, type, spriteTile.map);            
             
+        },
+        queryExtensions : function(gl){
+            gl = vetGL(gl,"queryExtensions");
+            var extensions = gl.getSupportedExtensions();      
+            if(API.debug){
+                console.log("Available WebGL extensions.");
+                console.log(extensions);
+            }
+            return extensions;
         },
         createCompositeFilters : function(gl){
             gl = vetGL(gl,"createCompositeFilters");
@@ -662,7 +669,7 @@ var webGLHelper = (function(){
                     }
                     gl.shaderSource(shader, source);
                     gl.compileShader(shader);
-                    if(report(gl,shader,"shader", n, source)){throw new ReferenceError("WEBGL Shader error : Program : '"+pname+"' shader : " + n); }
+                    if(report(gl,pname,shader,"shader", n, source)){throw new ReferenceError("WEBGL Shader error : Program : '"+pname+"' shader : " + n); }
                     shaders.push(shader);
                 }
             });
@@ -671,7 +678,7 @@ var webGLHelper = (function(){
             gl.linkProgram(program);
             var name = variables.names[0];
             var vars = getLocations(gl,{ program : program,variables : variables});
-            if(report(gl,program,"program",pname)){throw new ReferenceError("WEBGL Program error : " + pname);}
+            if(report(gl,pname,program,"program",pname)){throw new ReferenceError("WEBGL Program error : " + pname);}
             vars.program = program;
             vars.name = name;
             vars.id = id ++;
