@@ -29,6 +29,11 @@ var spriteRender = (function(){
         gl.uniform4iv(cs.loc,spriteLocations);  
         batched = 0;
     };     
+    var batchSpritePrepCustom = function(data){
+        setBuffer(batchSpritePosBuffer,cs.position,batchSpritePos);   
+        gl.uniform4iv(cs.loc,cs.spriteLocations);  
+        batched = 0;
+    };     
 
     var sw,sh,gl,spr;
     var shaders ={};
@@ -43,6 +48,52 @@ var spriteRender = (function(){
             h = webGL.height;
             gl = webGL.gl;
         },        
+        addShader : function(name,consts,as){
+            if(webGLHelper.doesProgramSourceExist(name)){
+                cs = webGLHelper.createProgram(gl,name,consts);
+                if(typeof as === "string"){                    
+                    shaders[as] = cs; 
+                    cs.name = as;
+                }else{
+                    shaders[cs.name] = cs;
+                }
+                this.currentShader = cs = null;
+            }else{
+                throw new RangeError("spriteRender No source code found for program '"+name+"'");
+            }
+        },
+        setSpriteBatchSize : function(size){
+            if(gl !== undefined){
+                throw new ReferenceError("spriteRender can not set sprite batch count after being initialised");
+            }
+            batchSize = size;
+            batch = new Float32Array(batchSize*5);
+            batchSpritePos =  webGLHelper.createQuickSpriteArray(batchSize);
+            
+        },
+        addSpriteBatchShader : function(consts,as,spriteLocations){
+            var name = "batchSprite";
+            if(consts === null || consts === undefined){
+                consts = [];
+            }
+            consts.push({name : "spriteCount" , value : spriteLocations.length}); 
+            consts.push({name : "batchCount" , value : batchSize * 5}); 
+            if(webGLHelper.doesProgramSourceExist(name)){
+                cs = webGLHelper.createProgram(gl,name,consts);
+                if(typeof as === "string"){                    
+                    cs.name = as;
+                }
+                shaders[cs.name] = cs;
+                name = cs.name;
+                
+                cs.prep = batchSpritePrepCustom;
+                cs.spriteLocations = spriteLocations;                
+                this.currentShader = cs = null;
+                return shaders[name];
+            }else{
+                throw new RangeError("spriteRender.addSpriteBatchShader No source code found for program '"+name+"'");
+            }
+        },
         setupWebGL : function(webGL){
             w = webGL.width;
             h = webGL.height;            
@@ -59,9 +110,9 @@ var spriteRender = (function(){
             cs = webGLHelper.createProgram(gl,"batchTileSprite");
             shaders[cs.name] = cs;
             cs.prep = batchSpritePrep;
-            cs = webGLHelper.createProgram(gl,"batchSprite");
-            shaders[cs.name] = cs;
-            cs.prep = batchSpritePrep;
+            //cs = webGLHelper.createProgram(gl,"batchSprite");
+            //shaders[cs.name] = cs;
+            //cs.prep = batchSpritePrep;
             linePositionBuffer = gl.createBuffer();
             batchSpritePosBuffer  = gl.createBuffer();   
             positionBuffer = gl.createBuffer();    
@@ -80,10 +131,10 @@ var spriteRender = (function(){
                 if(sprite.tiles !== undefined){
                     spriteLocations= sprite.locations;
                     //spriteUniform[12] = -1 ;
-                }else if(sprite.sprites !== undefined){
-                    spriteLocations= sprite.locations;
+                }//else if(sprite.sprites !== undefined){
+                  //  spriteLocations= sprite.locations;
                     //spriteUniform[12] = sprite.sprites.length ;
-                }
+                //}
                 spriteUniform[14] = sw;
                 spriteUniform[15] = sh;    
             }
@@ -132,16 +183,14 @@ var spriteRender = (function(){
                 su[6] = s[6];
                 su[7] = s[7];
                 su[10] = alpha;
-                su[11] = 1;
-                //su[12] = 0.05;
-                //su[13] = 0.0;                
+                su[11] = 1;              
             }
-            batch[batched++] = x/w;
-            batch[batched++] = y/-h;
-            batch[batched++] = s[2]/w*scale;
+            batch[batched++] = x / w;
+            batch[batched++] = y / -h;
+            batch[batched++] = s[2] / w * scale;
             batch[batched++] = rot;      
             batch[batched++] = index;      
-            if(batched === batchSize*5){
+            if(batched === batchSize * 5){
                 gl.uniform2fv(cs.desc, su);
                 gl.uniform1fv(cs.pos, batch);
                 gl.drawArrays(gl.TRIANGLES, 0, batchSize*6);

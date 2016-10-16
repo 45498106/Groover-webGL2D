@@ -21,6 +21,7 @@ var logs = (function(){
         counter : "Counter",
         logDisplay : "logDisplay",
         controls : "logControls",
+        inputText : "Input",
     }
     var styleElement,styleContainor,element;
     function createStyleContent(){
@@ -64,6 +65,13 @@ var logs = (function(){
             background: ${API.background};
             display: block;
             word-wrap: break-word;
+        }
+        .${classNames.prefix + classNames.inputText} {
+            color: ${API.color};
+            background: ${API.background};
+            width: 100px;
+            text-align: right;
+            font-size: xx-small;            
         }
         .${classNames.prefix + classNames.counter} { /*  the counter for repeated values */
             color: ${API.colorCounter};
@@ -224,6 +232,26 @@ var logs = (function(){
         lastData = data;
         logs.scrollTop = logs.scrollHeight;
     }
+    function logValMod(data){  //data is {name:"name", value : "value"}
+        if(logs === undefined){
+            console.log(data);
+            return;
+        }
+        var span = document.createElement("span");
+        span.className = classNames.prefix;
+        var input = document.createElement("input");
+        input.type = "number";
+        input.className = classNames.prefix + classNames.inputText;
+        input.id = "logInput_"+ data.name;
+        input.value = data.value;
+        span.textContent = data.name;
+        span.appendChild(input);
+        logs.appendChild(span);
+        logs.scrollTop = logs.scrollHeight;
+        
+        
+        
+    }
     function logSys(data, error,showConsole) {
         if (error) {
             var str = "<span class='" + (classNames.prefix + classNames.sys + classNames.error) + "'>"
@@ -298,6 +326,7 @@ var logs = (function(){
             return logs;
         },
         classNames : classNames,
+        nameVal : logValMod,
         log : log,
         logP : logP,
         clear : logClear,

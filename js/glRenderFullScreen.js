@@ -94,10 +94,15 @@ var fullScreenRender = (function(){
             }            
         },
 
-        addShader : function(name,consts){
+        addShader : function(name,consts,as){
             if(webGLHelper.doesProgramSourceExist(name)){
                 cs = webGLHelper.createProgram(gl,name,consts);
-                shaders[cs.name] = cs; 
+                if(typeof as === "string"){                    
+                    shaders[as] = cs; 
+                    cs.name = as;
+                }else{
+                    shaders[cs.name] = cs;
+                }
                 this.currentShader = cs = null;
             }else{
                 throw new RangeError("fullScreenRender No source code found for program '"+name+"'");

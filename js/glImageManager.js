@@ -18,6 +18,41 @@ var imageManager = (function(){
     }
     
     var API = {
+        createImageSet : function(URLs,names,sampler){
+            var imageSet = {
+                images : {},
+                textures : {},    
+            }            
+            if(!Array.isArray(names)){
+                names = [names];
+            }
+            if(!Array.isArray(URLs)){
+                URLs = [URLs];
+            }
+            imageSet.urls = [];
+            imageSet.names = [];
+            imageSet.options = [];
+            
+            URLs.forEach((url,i) => {
+                imageSet.urls.push(url);
+                if(names !== undefined){
+                    imageSet.names.push(names[i]);
+                }else{
+                    imageSet.names.push(url.split("/").pop().split(".")[0]);
+                }
+                var option = {};
+                imageSet.options.push(option);
+                if(sampler !== undefined){
+                    if(typeof sampler === "string"){
+                        option.sampler = sampler;
+                    }else if(Array.isArray(sampler)){
+                        option.sampler = sampler[i];
+                    }
+                }
+                        
+            });
+            return imageSet;
+        },
         loadImageSet : function(imageSet){
             var i,count;
             var load = function(image){
@@ -42,6 +77,7 @@ var imageManager = (function(){
                 logs.log("loading image : " + imageSet.names[i]);
             }
             imageSet.ready = false;
+            return imageSet;
         },
         createTileMap : function(width,height,maxTiles,gl){
             var tileMap;

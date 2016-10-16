@@ -35,7 +35,7 @@
      
      The value of the const HI_VAL can be set with
      
-         webGLHelper.createProgram(gl,"myShader",[{name:"HI_VAL",value:0.01}); 
+         webGLHelper.createProgram(gl,"myShader",[{name:"HI_VAL",value:0.01}]); 
      
      Which will modify all occurrences of <%HI_VAL> with 0.01 resulting in
      
@@ -56,9 +56,13 @@
           name : "Colour",
           value : "* vec4(255.0,0.0,0.0,1)",
       }
+      webGLHelper.createProgram(gl,"myShader",consts); 
  
       Shader becomes
       gl_FragColor = texture2D(texture,tex) * vec4(255.0,0.0,0.0,1);
+ 
+ 
+ Defaults 
  
  Constants can also be defined in the shader with the #% directive. This provides a default value
  for the constant if not supplied with createProgram.
@@ -82,7 +86,7 @@
  #name defines the name of the program the shader is associated with. (use to reference shader)
  #include adds code to the shader from a named source.
        #include shaderSetup; // add the shader source code found in shaderSetup
- #uniform and #attribute automaticly add the variable location to the shader as the name given in  
+ #uniform and #attribute automatic add the variable location to the shader as the name given in  
        in the shader source code.
        For example 
           #uniform vec2 mouse;  // shader source code
@@ -110,6 +114,33 @@
            shader.mouse.shadow[1] = mouseY;
            shader.mouse.set(gl);                             // set the shader uniform to the shadow
            
+           
+       When creating a shadow array you can also define named lookups into the array including the 
+            default value. The named lookup can then be used to index into the shadow array.
+            
+       Example
+       
+       shader
+           #shadow uniform float settings[specular = 1.0, ambient = 0.4, power = 0.5];
+       precompile 
+           uniform float settings[3];
+           
+       To access the named lookups from the shader container
+
+           shader.settings.shadow[shader.settings.lookups.specular] = 2.0;
+           
+       Also the shadow array will have the default values pre set. Thus after the above line the 
+           shadow array will have the values
+           
+           shader.settings.shadow === [2.0,0.4,0.5]
+           
+       You can also get a list of lookup names with shader.settings.lookupNames which is just and 
+           array of strings. From the above example this array looks like 
+          
+           shader.settings.lookupNames === ["specular","ambient","power"]
+           
+       
+           
 ==================================================================================================*/
 
 
@@ -117,8 +148,6 @@
 
 // curly braces are just from my folding system
 {webGLHelper.addShader("backgroundImage",`
-
-
             #type vertex;
             #name backgroundImage;
             #include simplePosTexture;
@@ -138,6 +167,220 @@
                 gl_FragColor = texture2D($t1,$tex);
             }`);
 }
+{webGLHelper.addShader("bgColourStretch",`
+            #type vertex;    
+            #name bgColourStretch;
+            #include screenScaleFull;
+            `);}
+{webGLHelper.addShader("bgColourStretch",`
+            #type fragment;      
+            #name bgColourStretch;
+            #include screenScaleFull;
+            void main() {
+                vec4 v = texture2D($t1,$tex);
+                float mn = min(v.x,min(v.y,v.z));
+                float mx = max(v.x,max(v.y,v.z));
+                if(v.x == mn){
+                    v.x = 0.0;
+                    if(v.y == mx){
+                        v.y = 1.0;
+                    }else{
+                        v.z = 1.0;
+                    }
+                }else if(v.y == mn){
+                    v.y = 0.0;
+                    if(v.x == mx){
+                        v.x = 1.0;
+                    }else{
+                        v.z = 1.0;
+                    }
+                }else{
+                    v.z = 0.0;
+                    if(v.y == mx){
+                        v.y = 1.0;
+                    }else{
+                        v.x = 1.0;
+                    }
+                }
+                gl_FragColor = v;
+            }`);}
+{webGLHelper.addShader("bgColourStretchCurve",`
+            #type vertex;    
+            #name bgColourStretchCurve;
+            #include screenScaleFull;
+            `);}
+{webGLHelper.addShader("bgColourStretchCurve",`
+            #type fragment;      
+            #name bgColourStretchCurve;
+            #include screenScaleFull;
+            void main() {
+                vec4 v = texture2D($t1,$tex);
+                float mn = min(v.x,min(v.y,v.z));
+                float mx = max(v.x,max(v.y,v.z));
+                float pp = 1.0;
+                if(v.x == mn){
+                    if(v.y == mx){
+                        pp = v.z;
+                    }else{
+                        pp = v.y;
+                    }
+                }else if(v.y == mn){
+                    if(v.x == mx){
+                        pp = v.z;
+                    }else{
+                        pp = v.x;
+                    }
+                }else{
+                    if(v.y == mx){
+                        pp = v.x;
+                    }else{
+                        pp = v.y;
+                    }
+                }
+                pp *= 8.0;
+                vec4 v2 = pow(v,vec4(pp,pp,pp,1));
+                v2 = v2/(v2 + pow(vec4(1.0,1.0,1.0,1.0)-v,vec4(pp,pp,pp,1)));
+                v2.z = v.z;
+                gl_FragColor = v2;            
+           }`);}      
+{webGLHelper.addShader("bgColourCurve",`
+            #type vertex;    
+            #name bgColourCurve;
+            #include screenScaleFull;
+            `);}
+{webGLHelper.addShader("bgColourCurve",`
+            #type fragment;      
+            #name bgColourCurve;
+            #include screenScaleFull;
+            #shadow uniform float powVal;
+            void main() {
+                vec4 v = texture2D($t1,$tex);
+                vec4 v2 = pow(v,vec4(powVal,powVal,powVal,1));
+                v2 = v2/(v2 + pow(vec4(1.0,1.0,1.0,1.0)-v,vec4(powVal,powVal,powVal,1)));
+                v2.z = v.z;
+                gl_FragColor = v2;
+            }`);}
+{webGLHelper.addShader("bgLight",` // just a quick test. Of no real use
+            #type vertex;    
+            #name bgLight;
+            #include screenScaleFull;
+            `);}
+{webGLHelper.addShader("bgLight",` // just a quick test. Of no real use
+            #type fragment;      
+            #name bgLight;
+            #include screenScaleFull;
+            #shadow uniform vec2 lightPos;
+            void main() {
+                vec4 v = texture2D($t1,$tex);
+                vec3 l = normalize(vec3(lightPos-vec2($tex.x,$tex.y),1.0));
+                vec3 n = normalize(vec3(v.x,v.y,v.z));
+                v *= max(dot(l,n),0.0);
+                v.z = v.z;
+                gl_FragColor = v;
+            }`);}
+{webGLHelper.addShader("bgConvolute",`
+            #type vertex;    
+            #name bgConvolute;
+            #include screenScaleFull;
+            `);}
+{webGLHelper.addShader("bgConvolute",`
+            #type fragment;      
+            #name bgConvolute;
+            #include screenScaleFull;
+            #$px = (1.0/512.0);
+            #$py = (1.0/512.0);
+            // sharpen
+            #$type = convoluteEdge;
+            #include $type;
+            void main() {
+                vec4 sum = texture2D($t1,$tex) * $w4;
+                sum += texture2D($t1,$tex + vec2(-$px,-$py)) * $w0;
+                sum += texture2D($t1,$tex + vec2( 0.0,-$py)) * $w1;
+                sum += texture2D($t1,$tex + vec2( $px,-$py)) * $w2;
+                
+                sum += texture2D($t1,$tex + vec2(-$px, 0.0)) * $w3;
+                sum += texture2D($t1,$tex + vec2( $px, 0.0)) * $w5;
+
+                sum += texture2D($t1,$tex + vec2(-$px, $py)) * $w6;
+                sum += texture2D($t1,$tex + vec2( 0.0, $py)) * $w7;
+                sum += texture2D($t1,$tex + vec2( $px, $py)) * $w8;
+                
+
+                gl_FragColor = $res;
+            }`);}
+{webGLHelper.addLib("convoluteSharpen",`
+#Vertex
+#Fragment            
+            #$div = 1.0;
+            #$w0 = -1.0; #$w1 = -1.0; #$w2 = -1.0;
+            #$w3 = -1.0; #$w4 = 9.0;  #$w5 = -1.0;
+            #$w6 = -1.0; #$w7 = -1.0; #$w8 = -1.0;
+            #$res = sum;
+            `
+);}
+{webGLHelper.addLib("convoluteEmbos",`
+#Vertex
+#Fragment            
+            #$div = 1.0;
+            #$w0 = 2.0; #$w1 = 0.0; #$w2 = 0.0;
+            #$w3 = 0.0; #$w4 =-1.0; #$w5 = 0.0;
+            #$w6 = 0.0; #$w7 = 0.0; #$w8 = -1.0;
+            #$res = vec4(sum.x+sum.y+sum.z,sum.x+sum.y+sum.z,sum.x+sum.y+sum.z,1.0) * 2.0;
+            `
+);}
+{webGLHelper.addLib("convoluteEmbosColour",`
+#Vertex
+#Fragment            
+            #$div = 1.0;
+            #$w0 = 2.0; #$w1 = 0.0; #$w2 = 0.0;
+            #$w3 = 0.0; #$w4 =-1.0; #$w5 = 0.0;
+            #$w6 = 0.0; #$w7 = 0.0; #$w8 = -1.0;
+            #$res = texture2D($t1,$tex) * (vec4(vec3(sum.x + sum.y + sum.z),1.0) * 2.0);
+            `
+);}
+{webGLHelper.addLib("convoluteEdge",`
+#Vertex
+#Fragment            
+
+            #$div = 0.125;
+            #$w0 = (-1.0/8.0); #$w1 = (-1.0/8.0); #$w2 = (-1.0/8.0);
+            #$w3 = (-1.0/8.0); #$w4 = 1.0;        #$w5 = (-1.0/8.0);
+            #$w6 = (-1.0/8.0); #$w7 = (-1.0/8.0); #$w8 = (-1.0/8.0);
+            #$res = (sum / 0.125) + vec4(0,0,0,1);
+            `
+);}
+{webGLHelper.addLib("convoluteEdgeStrong",`
+#Vertex
+#Fragment            
+
+            #$div = 0.125;
+            #$w0 = (-1.0/8.0); #$w1 = (-1.0/8.0); #$w2 = (-1.0/8.0);
+            #$w3 = (-1.0/8.0); #$w4 = 1.0;        #$w5 = (-1.0/8.0);
+            #$w6 = (-1.0/8.0); #$w7 = (-1.0/8.0); #$w8 = (-1.0/8.0);
+            #$res = (sum / 0.125)*4.0 + vec4(0,0,0,1);
+            `
+);}
+{webGLHelper.addLib("convoluteEdgeColour",`
+#Vertex
+#Fragment            
+
+            #$div = 0.125;
+            #$w0 = (-1.0/8.0); #$w1 = (-1.0/8.0); #$w2 = (-1.0/8.0);
+            #$w3 = (-1.0/8.0); #$w4 = 1.0;        #$w5 = (-1.0/8.0);
+            #$w6 = (-1.0/8.0); #$w7 = (-1.0/8.0); #$w8 = (-1.0/8.0);
+            #$res = (sum / 0.125)*4.0 + texture2D($t1,$tex);
+            `
+);}
+{webGLHelper.addLib("convoluteBlur",`
+#Vertex
+#Fragment            
+            #$div = 16.0;
+            #$w0 = 1.0; #$w1 = 2.0; #$w2 = 1.0;
+            #$w3 = 2.0; #$w4 = 4.0; #$w5 = 2.0;
+            #$w6 = 1.0; #$w7 = 2.0; #$w8 = 1.0;
+            #$res = (sum / 16.0);
+            `
+);}
 {webGLHelper.addShader("bgThreshold",`
             #type vertex;    
             #name bgThreshold;
@@ -165,9 +408,6 @@
                 gl_FragColor = v;
             }`);
 }
-//webGLHelper.setShaderOption("bgThreshold",{showPreCompile:true});
-webGLHelper.setShaderOption("backgroundImage",{showPreCompile:true});
-
 {webGLHelper.addShader("fillScreen",`
             #type vertex;    
             #name fillScreen;
@@ -708,9 +948,9 @@ webGLHelper.setShaderOption("backgroundImage",{showPreCompile:true});
             }            
         `);
 }
-{webGLHelper.addShader("swirl",`
+{webGLHelper.addShader("swirl3",`
             #type vertex;      
-            #name swirl;
+            #name swirl3;
             #include simplePosTexture;
             #include screenScale;
             void main() {
@@ -719,23 +959,50 @@ webGLHelper.setShaderOption("backgroundImage",{showPreCompile:true});
             }            
         `);
 }
-{webGLHelper.addShader("swirl",`
+{webGLHelper.addShader("swirl3",`
             #type fragment;      
-            #name swirl;
+            #name swirl3;
             precision mediump float;
             #include textures3;
             #include screenScale;
-            
-            #include swirlFirstExperiment;
-            
- 
-            
             #uniform vec2 size;
             #shadow uniform vec3 mouse; 
             #$gTime = mouse.x;
+            void main() {
+                vec4 pixA = texture2D(texture0, $tex);
+                pixA -= vec4(0.5,0.5,0.5,0.5);
+                vec2 tet = $tex + vec2(0.5,0.5);
+                float d = atan(pixA.x,pixA.y) * sin($gTime/100.0)*7.0 * pixA.z * sin((tet.x * tet.y)*2.0*mouse.z) * 17.0*mouse.y;
+                d -= atan(pixA.z,pixA.y) * cos($gTime/237.0)*6.0 * pixA.y * cos((tet.x / tet.y)*1.5*mouse.y) * 13.0*mouse.z;
+                vec2 tt = $tex + vec2(cos(d),sin(d))/(612.0 + cos(mouse.x) * 100.0);
+               
 
+                gl_FragColor = texture2D(texture0,tt);
 
+            }`);
+}
 
+{webGLHelper.addShader("swirl2",{listConstants : true,showPreCompile:true},`
+            #type vertex;      
+            #name swirl2;
+            #include simplePosTexture;
+            #include screenScale;
+            void main() {
+                gl_Position = $pos * vec4($scale.x,-($screen.y / $screen.x) * $scale.y,1.0,1.0);
+                $tex = $coords;
+            }            
+        `);
+}
+{webGLHelper.addShader("swirl2",`
+            #type fragment;      
+            #name swirl2;
+            precision mediump float;
+            #include textures3;
+            #include screenScale;
+            #include swirlFirstExperiment2;
+            #uniform vec2 size;
+            #shadow uniform vec3 mouse; 
+            #$gTime = mouse.x;
             void main() {
                 vec4 pixA = texture2D(texture0, $tex);
                 vec4 pixA1 = texture2D(texture0, $tex + vec2(1.0 / $atrractLen, 0.0));
@@ -755,7 +1022,7 @@ webGLHelper.setShaderOption("backgroundImage",{showPreCompile:true});
                 likeAttr = normalize(likeAttr) / ($textureSize / $attractorScale);
                 float lla = length(likeAttr);
                 float ang = 0.01 * $gTime * lla;
-                vec2 texa = $tex - vec2(0.5, 0.5); //+likeAttr*1.0;
+                vec2 texa = $tex - vec2(0.5, 0.5); 
                 float le = length(texa) + 0.01;
                 le = (sin(((pixA.x - pixA.y) + 1.0) / $lenSinScale) + $lenSinOffset) / (le * $lenReductionAmount * le);
                 float dir = atan(texa.y, texa.x) * lla;
@@ -769,15 +1036,13 @@ webGLHelper.setShaderOption("backgroundImage",{showPreCompile:true});
                 vec2 texT1 = vec2(
                         texa.x * cos(ang * $ang4) + texa.y * -sin(ang * $ang2),
                         texa.x * sin(ang * $ang1) + texa.y * cos(ang * $ang3));
-                //texT1 = normalize(texT1);
+
 
                 texT *= 1.0 / (0.9999 + cos($gTime + dir / ($zoomOcc1 * le * d3)) * $zoomOccScale);
                 texT1 *= 1.0 / (0.9999 + sin($gTime + dir / ($zoomOcc1 * le * d3)) * $zoomOccScale);
-                texT += vec2(0.5, 0.5); //(texa-texT)*($tex/20.0)*vec2(d1*(sin($gTime/103.0*tex.x)*10.1*le),d2*(cos($gTime/130.0*tex.y)*10.01*le+tex.y))*(sin($gTime/1000.0)*20.1*le);
-                texT1 += vec2(0.5 + mouse.y / 200.0, 0.5 + mouse.z / 220.0); //(texa-texT)*($tex/20.0)*vec2(d1*(sin($gTime/103.0*tex.x)*10.1*le),d2*(cos($gTime/130.0*tex.y)*10.01*le+tex.y))*(sin($gTime/1000.0)*20.1*le);
-                //texT1 = normalize(texT1)/600.0;
+                texT += vec2(0.5, 0.5); 
+                texT1 += vec2(0.5 , 0.5); 
                 vec4 pix = texture2D(texture0, texT);
-                //pix *= texture2D(texture0,texT1);
                 float mm = 1.0 - le * 0.01 * dir; ;
                 vec2 fromC = (texT - vec2(mouse.y + 0.5, mouse.z + 0.5));
                 float dd = atan(fromC.y, fromC.x) * $directionScale * sin($gTime * ((pix.x + pix.y) * $PI)) * texT.x * texT.y;
@@ -786,11 +1051,303 @@ webGLHelper.setShaderOption("backgroundImage",{showPreCompile:true});
                 float len = sin(le * le) * $lenOccilatorScale;
                 fromC = normalize(fromC) / $textureSize;
                 vec2 off = vec2(-fromC.y * (texT.y - 0.5), fromC.x);
-                //off += vec2(-fromC.x,fromC.y* (texT1.y-0.5));
                 off += normalize(vec2(
                         sin(mouse.x * len + dd * pix.z / d4),
                         cos(mouse.x * len + dd * pix.y / d4))) / $textureSize;
-                //float dot3 = sin((dot(normalize(fromC),normalize(off)))*$PI) ;
+
+                float dot3 = dot(normalize(fromC), normalize(off));
+                off += vec2((pix.x - 0.5) / d4, (pix.y - 0.5) / d3) / ($textureSize / 4.0);
+                //off = (normalize(off) / ($textureSize / 4.0));
+                off += likeAttr * (0.5 + sin($gTime / $attractOcc1) * $attractOccScale1 + sin($gTime / $attractOcc2) * $attractOccScale2);
+                vec4 ec = vec4(
+                        mm * $mix + (cos($gTime * $mixR * pix.y * off.x) * $mix1),
+                        mm * $mix + (cos($gTime * $mixG * pix.z * off.y) * $mix1),
+                        mm * $mix + (cos($gTime * $mixB * pix.x * off.x * off.y) * $mix1),
+                        mm * $mix);
+
+
+                float dot1 = dot(normalize(texT), normalize(off));
+                float dot2 = dot(normalize(texa), normalize(likeAttr));
+
+                vec4 tt = texture2D(texture0, texT + off + likeAttr);
+                vec4 tt1 = texture2D(texture0, texT1 - likeAttr);
+
+                float mi = sqrt(abs(sin(dot1 * 6.56)));
+                tt = mi * tt1 + (1.0 - mi) * tt;
+
+                float ttr = tt.x * off.x * 1.0 * dot1 / dot3;
+                float ttg = tt.y * off.y * 1.0 * dot2 / dot1;
+                float ttb = tt.z * likeAttr.y * 1.0 * dot3 / dot2;
+                tt -= vec4(ttr, ttg, ttb, 0.0);
+                tt += vec4(ttg, ttb, ttr, 0.0);
+               
+
+                gl_FragColor = tt * vec4(1.0 - mm * $mix) +
+                    texture2D(texture1, (texT + vec2($gTime * $backXMovement, $gTime * $backYMovement))*fromC*100000.0) * ec;
+
+            }`);
+}
+{webGLHelper.addLib("swirlFirstExperiment2",`
+#Vertex
+#Fragment           
+
+            #shadow uniform float settings[textureSize=10000.0, atrractLen=10.4, attractorScale=3.1,attractorLenScale =4.1,lenOccilatorScale=1.1,attractOcc1= 4.0,attractOcc2=2.0,mixR = 1.0,mixG = 2.0,mixB=13.0,lenSinScale= 0.13,lenSinOffset= 1.13,rotAngleStart=0.00015,rotVaryFreq=0.0001,rotVaryAmount=0.002,rotVaryColfeedback = 2.0,rotVaryColfeedbackAmount = 0.9,directionScale = 5.0,directionScale1 = 5.0,attractOccScale1 = 0.5,attractOccScale2 = 0.5,backYMovement = 0.0005,backXMovement = 0.001,zoomOcc1 = 10.0,zoomOccScale = 0.0001]; 
+            
+            #$textureSize = settings[0]; // abstract texture size
+            #$atrractLen = settings[1]; // dist between attracting colours
+            #$attractorScale = settings[2];
+            #$attractorLenScale = settings[3];
+            #$mix = 0.0051;  // mix amount of background image
+            #$mix1 = 0.00042; // mix of colour change
+            #$mixR = settings[7]; // mix time multiplier for red
+            #$mixG = settings[8]; // green
+            #$mixB = settings[9]; // blue
+            #$ang1 = (sin(mouse.x/200.0)*0.4+0.5);
+            #$ang2 = pixA.x*d3;
+            #$ang3 = pixA.y*d2;
+            #$ang4 = pixA.z*d1;
+            #$lenSinScale = settings[10];
+            #$lenSinOffset = settings[11];
+            #$lenReductionAmount = (sin(mouse.x/200.0)*4.1+3.0+pixA.x*2.0);
+            #$rotAngleStart = settings[12];
+            #$rotVaryFreq = settings[13];  ////// divides time with this value
+            #$rotVaryAmount = settings[14]; 
+            #$rotVaryColfeedback = settings[15];
+            #$rotVaryColfeedbackAmount = settings[16];
+            #$directionScale = settings[17];
+            #$directionScale1 = settings[18];
+
+            
+
+            #$PI = 3.1415;
+            #$lenOccilatorScale = settings[4];
+            #$attractOcc1 = settings[5];
+            #$attractOcc2 = settings[6];
+            #$attractOccScale1 = settings[19];
+            #$attractOccScale2 = settings[20];
+            #$backYMovement = settings[21];
+            #$backXMovement = settings[22];
+            #$zoomOcc1 = settings[23];
+            #$zoomOccScale = settings[24];
+
+            `
+);}
+{webGLHelper.addShader("swirl",`
+            #type vertex;      
+            #name swirl;
+            #include simplePosTexture;
+            #include screenScale;
+            void main() {
+                gl_Position = $pos * vec4($scale.x,-($screen.y / $screen.x) * $scale.y,1.0,1.0);
+                $tex = $coords;
+            }            
+        `);
+}
+{webGLHelper.addShader("swirl",`
+            #type fragment;      
+            #name swirl;
+            precision mediump float;
+            #include textures3;
+            #include screenScale;
+            #include swirlFirstExperiment;
+            #uniform vec2 size;
+            #shadow uniform vec3 mouse; 
+            #$gTime = mouse.x;
+            void main() {
+                vec4 pixA = texture2D(texture0, $tex);
+                vec4 pixA1 = texture2D(texture0, $tex + vec2(1.0 / $atrractLen, 0.0));
+                vec4 pixA2 = texture2D(texture0, $tex + vec2(-1.0 / $atrractLen, 0.0));
+                vec4 pixA3 = texture2D(texture0, $tex + vec2(0.0, 1.0 / $atrractLen));
+                vec4 pixA4 = texture2D(texture0, $tex + vec2(0.0, -1.0 / $atrractLen));
+                vec2 likeAttr = vec2(0.0, 0.0);
+                float d1 = (1.0 - length(pixA1 - pixA)) * $attractorLenScale;
+                float d2 = (1.0 - length(pixA2 - pixA)) * $attractorLenScale;
+                float d3 = (1.0 - length(pixA3 - pixA)) * $attractorLenScale;
+                float d4 = (1.0 - length(pixA4 - pixA)) * $attractorLenScale;
+                likeAttr += d1 * vec2(1.0 / $atrractLen, 0.0);
+                likeAttr += d2 * vec2(-1.0 / $atrractLen, 0.0);
+                likeAttr += d3 * vec2(0.0, 1.0 / $atrractLen);
+                likeAttr += d4 * vec2(0.0, -1.0 / $atrractLen);
+                likeAttr *= vec2(pixA.x, pixA.y) * pixA.z;
+                likeAttr = normalize(likeAttr) / ($textureSize / $attractorScale);
+                float lla = length(likeAttr);
+                float ang = 0.01 * $gTime * lla;
+                vec2 texa = $tex - vec2(0.5, 0.5); 
+                float le = length(texa) + 0.01;
+                le = (sin(((pixA.x - pixA.y) + 1.0) / $lenSinScale) + $lenSinOffset) / (le * $lenReductionAmount * le);
+                float dir = atan(texa.y, texa.x) * lla;
+                ang = le * ($rotAngleStart / cos(d1));
+                ang += cos(($gTime / $rotVaryFreq) * pixA.x) * ($rotVaryAmount * pixA.y);
+                ang *= cos(ang * $rotVaryColfeedback * pixA.z * d2) * $rotVaryColfeedbackAmount * pixA.x * (d4 + d2 + d3 + d1);
+                vec2 texT = vec2(
+                        texa.x * cos(ang * $ang3) + texa.y * -sin(ang * $ang1),
+                        texa.x * sin(ang * $ang4) + texa.y * cos(ang * $ang2));
+                ang -= le / 200.0;
+                vec2 texT1 = vec2(
+                        texa.x * cos(ang * $ang4) + texa.y * -sin(ang * $ang2),
+                        texa.x * sin(ang * $ang1) + texa.y * cos(ang * $ang3));
+
+
+                texT *= 1.0 / (0.9999 + cos($gTime + dir / ($zoomOcc1 * le * d3)) * $zoomOccScale);
+                texT1 *= 1.0 / (0.9999 + sin($gTime + dir / ($zoomOcc1 * le * d3)) * $zoomOccScale);
+                texT += vec2(0.5, 0.5); 
+                texT1 += vec2(0.5 , 0.5); 
+                vec4 pix = texture2D(texture0, texT);
+                float mm = 1.0 - le * 0.01 * dir; ;
+                vec2 fromC = (texT - vec2(mouse.y + 0.5, mouse.z + 0.5));
+                float dd = atan(fromC.y, fromC.x) * $directionScale * sin($gTime * ((pix.x + pix.y) * $PI)) * texT.x * texT.y;
+                dd += atan(pix.y, pix.x) * $directionScale1 * sin($gTime * ((pix.x + pix.y) * $PI)) * texT.x * texT.y;
+                le = length(fromC);
+                float len = sin(le * le) * $lenOccilatorScale;
+                fromC = normalize(fromC) / $textureSize;
+                vec2 off = vec2(-fromC.y * (texT.y - 0.5), fromC.x);
+                off += normalize(vec2(
+                        sin(mouse.x * len + dd * pix.z / d4),
+                        cos(mouse.x * len + dd * pix.y / d4))) / $textureSize;
+
+                float dot3 = dot(normalize(fromC), normalize(off));
+                off += vec2((pix.x - 0.5) / d4, (pix.y - 0.5) / d3) / ($textureSize / 4.0);
+                //off = (normalize(off) / ($textureSize / 4.0));
+                off += likeAttr * (0.5 + sin($gTime / $attractOcc1) * $attractOccScale1 + sin($gTime / $attractOcc2) * $attractOccScale2);
+                vec4 ec = vec4(
+                        mm * $mix + (cos($gTime * $mixR * pix.y * off.x) * $mix1),
+                        mm * $mix + (cos($gTime * $mixG * pix.z * off.y) * $mix1),
+                        mm * $mix + (cos($gTime * $mixB * pix.x * off.x * off.y) * $mix1),
+                        mm * $mix);
+
+
+                float dot1 = dot(normalize(texT), normalize(off));
+                float dot2 = dot(normalize(texa), normalize(likeAttr));
+
+                vec4 tt = texture2D(texture0, texT + off + likeAttr);
+                vec4 tt1 = texture2D(texture0, texT1 - likeAttr);
+
+                float mi = sqrt(abs(sin(dot1 * 6.56)));
+                tt = mi * tt1 + (1.0 - mi) * tt;
+
+                float ttr = tt.x * off.x * 1.0 * dot1 / dot3;
+                float ttg = tt.y * off.y * 1.0 * dot2 / dot1;
+                float ttb = tt.z * likeAttr.y * 1.0 * dot3 / dot2;
+                tt -= vec4(ttr, ttg, ttb, 0.0);
+                tt += vec4(ttg, ttb, ttr, 0.0);
+               
+
+                gl_FragColor = tt * vec4(1.0 - mm * $mix) +
+                    texture2D(texture1, (texT + vec2($gTime * $backXMovement, $gTime * $backYMovement))*fromC*100000.0) * ec;
+
+            }`);
+}
+{webGLHelper.addLib("swirlFirstExperiment",`
+#Vertex
+#Fragment            
+            #$textureSize = 1000000.0; // abstract texture size
+            #$atrractLen = 10.4; // dist between attracting colours
+            #$attractorScale = 3.1;
+            #$attractorLenScale = 4.1;
+            #$mix = 0.0051;  // mix amount of background image
+            #$mix1 = 0.00042; // mix of colour change
+            #$mixR = 1.0; // mix time multiplier for red
+            #$mixG = 2.0; // green
+            #$mixB = 13.0; // blue
+            #$ang1 = (sin(mouse.x/200.0)*0.4+0.5);
+            #$ang2 = pixA.x/d3;
+            #$ang3 = pixA.y/d2;
+            #$ang4 = pixA.z/d1;
+            #$lenSinScale = 0.1;
+            #$lenSinOffset = 1.3;
+            #$lenReductionAmount = (sin(mouse.x/200.0)*4.1+3.0+pixA.x*2.0);
+            #$rotAngleStart = 0.00015;
+            #$rotVaryFreq = 0.0001;  ////// divides time with this value
+            #$rotVaryAmount = 0.002; 
+            #$rotVaryColfeedback = 2.0;
+            #$rotVaryColfeedbackAmount = 0.9;
+            #$directionScale = 52.0;
+            #$directionScale1 = 53.0;
+            #$PI = 3.1415;
+            #$lenOccilatorScale = 10.1;
+            #$attractOcc1 = 420.0;
+            #$attractOcc2 = 235.0;
+            #$attractOccScale1 = 0.5;
+            #$attractOccScale2 = 0.5;
+            #$backYMovement = 0.0005;
+            #$backXMovement = 0.001;
+            #$zoomOcc1 = 10.0;
+            #$zoomOccScale = 0.0001;
+            `
+);}
+{webGLHelper.addShader("swirl1",`
+            #type vertex;      
+            #name swirl1;
+            #include simplePosTexture;
+            #include screenScale;
+            void main() {
+                gl_Position = $pos * vec4($scale.x,-($screen.y / $screen.x) * $scale.y,1.0,1.0);
+                $tex = $coords;
+            }            
+        `);
+}
+{webGLHelper.addShader("swirl1",`
+            #type fragment;      
+            #name swirl1;
+            precision mediump float;
+            #include textures3;
+            #include screenScale;
+            #include swirlSetting1;
+            #uniform vec2 size;
+            #shadow uniform vec3 mouse; 
+            #$gTime = mouse.x;
+            void main() {
+                 vec4 pixA = texture2D(texture0, $tex);
+                vec4 pixA1 = texture2D(texture0, $tex + vec2(1.0 / $atrractLen, 0.0));
+                vec4 pixA2 = texture2D(texture0, $tex + vec2(-1.0 / $atrractLen, 0.0));
+                vec4 pixA3 = texture2D(texture0, $tex + vec2(0.0, 1.0 / $atrractLen));
+                vec4 pixA4 = texture2D(texture0, $tex + vec2(0.0, -1.0 / $atrractLen));
+                vec2 likeAttr = vec2(0.0, 0.0);
+                float d1 = (1.0 - length(pixA1 - pixA)) * $attractorLenScale;
+                float d2 = (1.0 - length(pixA2 - pixA)) * $attractorLenScale;
+                float d3 = (1.0 - length(pixA3 - pixA)) * $attractorLenScale;
+                float d4 = (1.0 - length(pixA4 - pixA)) * $attractorLenScale;
+                likeAttr += d1 * vec2(1.0 / $atrractLen, 0.0);
+                likeAttr += d2 * vec2(-1.0 / $atrractLen, 0.0);
+                likeAttr += d3 * vec2(0.0, 1.0 / $atrractLen);
+                likeAttr += d4 * vec2(0.0, -1.0 / $atrractLen);
+                likeAttr *= vec2(pixA.x, pixA.y) * pixA.z;
+                likeAttr = normalize(likeAttr) / ($textureSize / $attractorScale);
+                float lla = length(likeAttr);
+                float ang = 0.01 * $gTime * lla;
+                vec2 texa = $tex - vec2(0.5, 0.5); 
+                float le = length(texa) + 0.01;
+                le = (sin(((pixA.x - pixA.y) + 1.0) / $lenSinScale) + $lenSinOffset) / (le * $lenReductionAmount * le);
+                float dir = atan(texa.y, texa.x) * lla;
+                ang = le * ($rotAngleStart / cos(d1));
+                ang += cos(($gTime / $rotVaryFreq) * pixA.x) * ($rotVaryAmount * pixA.y);
+                ang *= cos(ang * $rotVaryColfeedback * pixA.z * d2) * $rotVaryColfeedbackAmount * pixA.x * (d4 + d2 + d3 + d1);
+                vec2 texT = vec2(
+                        texa.x * cos(ang * $ang3) + texa.y * -sin(ang * $ang1),
+                        texa.x * sin(ang * $ang4) + texa.y * cos(ang * $ang2));
+                ang -= le / 200.0;
+                vec2 texT1 = vec2(
+                        texa.x * cos(ang * $ang4) + texa.y * -sin(ang * $ang2),
+                        texa.x * sin(ang * $ang1) + texa.y * cos(ang * $ang3));
+
+
+                texT *= 1.0 / (0.9999 + cos($gTime + dir / ($zoomOcc1 * le * d3)) * $zoomOccScale);
+                texT1 *= 1.0 / (0.9999 + sin($gTime + dir / ($zoomOcc1 * le * d3)) * $zoomOccScale);
+                texT += vec2(0.5, 0.5); 
+                texT1 += vec2(0.5 + mouse.y / 200.0, 0.5 + mouse.z / 220.0); 
+                vec4 pix = texture2D(texture0, texT);
+                float mm = 1.0 - le * 0.01 * dir; ;
+                vec2 fromC = (texT - vec2(mouse.y + 0.5, mouse.z + 0.5));
+                float dd = atan(fromC.y, fromC.x) * $directionScale * sin($gTime * ((pix.x + pix.y) * $PI)) * texT.x * texT.y;
+                dd += atan(pix.y, pix.x) * $directionScale1 * sin($gTime * ((pix.x + pix.y) * $PI)) * texT.x * texT.y;
+                le = length(fromC);
+                float len = sin(le * le) * $lenOccilatorScale;
+                fromC = normalize(fromC) / $textureSize;
+                vec2 off = vec2(-fromC.y * (texT.y - 0.5), fromC.x);
+                off += normalize(vec2(
+                        sin(mouse.x * len + dd * pix.z / d4),
+                        cos(mouse.x * len + dd * pix.y / d4))) / $textureSize;
+
                 float dot3 = dot(normalize(fromC), normalize(off));
                 off += vec2((pix.x - 0.5) / d4, (pix.y - 0.5) / d3) / ($textureSize / 4.0);
                 off = (normalize(off) / ($textureSize / 4.0));
@@ -801,8 +1358,7 @@ webGLHelper.setShaderOption("backgroundImage",{showPreCompile:true});
                         mm * $mix + (cos($gTime * $mixB * pix.x * off.x * off.y) * $mix1),
                         mm * $mix);
 
-                //float dot1 = cos((dot(normalize(texT),normalize(off)))*$PI) ;
-                //float dot2 = sin((dot(normalize(texa),normalize(likeAttr)))*$PI) ;
+
                 float dot1 = dot(normalize(texT), normalize(off));
                 float dot2 = dot(normalize(texa), normalize(likeAttr));
 
@@ -811,16 +1367,10 @@ webGLHelper.setShaderOption("backgroundImage",{showPreCompile:true});
 
                 float mi = sqrt(abs(sin(dot1 * 6.56)));
                 tt = mi * tt1 + (1.0 - mi) * tt;
-                //tt = tt1/2.0+tt/2.0;
-                //tt = normalize(tt);
-                //float minV = min(tt.x,min(tt.y,tt.z));
-                //float maxV = max(tt.x,max(tt.y,tt.z));
-                //tt -= vec4(minV,minV,minV,0)*0.5;
-                //tt *= (1.0/(maxV-minV))*0.5;
-                // tt  *= tt;//1.0;
-                float ttr = tt.x * off.x * 1.0 * dot1 / dot3;
-                float ttg = tt.y * off.y * 1.0 * dot2 / dot1;
-                float ttb = tt.z * likeAttr.y * 1.0 * dot3 / dot2;
+
+                float ttr = tt.x * off.x * 1.0 * dot1;// / dot3;
+                float ttg = tt.y * off.y * 1.0 * dot2;// / dot1;
+                float ttb = tt.z * likeAttr.y * 1.0 * dot3;// / dot2;
                 tt -= vec4(ttr, ttg, ttb, 0.0);
                 tt += vec4(ttg, ttb, ttr, 0.0);
 
@@ -829,10 +1379,10 @@ webGLHelper.setShaderOption("backgroundImage",{showPreCompile:true});
 
             }`);
 }
-{webGLHelper.addLib("swirlFirstExperiment",`
+{webGLHelper.addLib("swirlSetting1",`
 #Vertex
 #Fragment            
-            #$textureSize = 1256.0; // abstract texture size
+            #$textureSize = 10256.0; // abstract texture size
             #$atrractLen = 221.0; // dist between attracting colours
             #$attractorScale = 16.0;
             #$attractorLenScale = 1.0;
@@ -867,7 +1417,6 @@ webGLHelper.setShaderOption("backgroundImage",{showPreCompile:true});
             #$zoomOccScale = 0.0001;
             `
 );}
-
 {webGLHelper.addLib("swirlFirstDraft",`
 #Vertex
 #Fragment            
@@ -907,8 +1456,6 @@ webGLHelper.setShaderOption("backgroundImage",{showPreCompile:true});
             
             `
 );}
-
-
 {webGLHelper.addShader("frameBufferTestB_OLD",`
             #type fragment;      
             #name frameBufferTestB_OLD;
@@ -955,3 +1502,48 @@ webGLHelper.setShaderOption("backgroundImage",{showPreCompile:true});
             }`);
 }
 
+
+/*{webGLHelper.addShader("colourCube",`
+
+        attribute vec4 position;
+        attribute vec2 texCoord;
+        varying vec2 v_texCoord;
+        void main() {
+          gl_Position = position;
+          v_texCoord = texCoord;
+        }
+
+
+`)};
+{webGLHelper.addShader("colourCube",`
+        #ifdef GL_ES
+        precision mediump float;
+        #endif
+        uniform float mixAmount;
+        uniform sampler2D inTexture;
+        uniform sampler2D colorCube0;
+        uniform sampler2D colorCube1;
+        varying vec2 v_texCoord;
+
+        vec4 sampleAs3DTexture(sampler2D tex, vec3 texCoord, float size) {
+           float sliceSize = 1.0 / size;                         // space of 1 slice
+           float slicePixelSize = sliceSize / size;              // space of 1 pixel
+           float sliceInnerSize = slicePixelSize * (size - 1.0); // space of size pixels
+           float zSlice0 = min(floor(texCoord.z * size), size - 1.0);
+           float zSlice1 = min(zSlice0 + 1.0, size - 1.0);
+           float xOffset = slicePixelSize * 0.5 + texCoord.x * sliceInnerSize;
+           float s0 = xOffset + (zSlice0 * sliceSize);
+           float s1 = xOffset + (zSlice1 * sliceSize);
+           vec4 slice0Color = texture2D(tex, vec2(s0, texCoord.y));
+           vec4 slice1Color = texture2D(tex, vec2(s1, texCoord.y));
+           float zOffset = mod(texCoord.z * size, 1.0);
+           return mix(slice0Color, slice1Color, zOffset);
+        }
+
+        void main() {
+          vec4 originalColor = texture2D(inTexture, v_texCoord);
+          vec4 color0 = sampleAs3DTexture(colorCube0, originalColor.rgb, 8.0);
+          vec4 color1 = sampleAs3DTexture(colorCube1, originalColor.rgb, 8.0);
+          gl_FragColor = vec4(mix(color0, color1, mixAmount).rgb, originalColor.a);
+        }
+`)};*/

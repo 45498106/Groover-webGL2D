@@ -1,11 +1,27 @@
-var testImages = {
-    urls : ["../Images/MapTest.png","../Images/GrooverCut639551.png","../Images/owl.jpg"], 
-    names : ["map","normals","owl"],
-    textOptions : [{sampler : "repeatLinear"},{sampler : "repeatLinear"},{sampler : "repeatLinear"}],
-    images : {},
-    textures : {},    
-    
-}
+var testImages = imageManager.createImageSet(
+        ["../Images/MapTest.png","../Images/GrooverCut639551.png","../Images/owl.jpg","../Images/StackedHeigth.png","../Images/NormalMapZFull.png","../Images/SlopeMap.png","../Images/stripes.png"], 
+        ["map","normals","owl","hMap","nMap","sMap","stripes"],
+        "repeatLinear"
+);
+var fxShaderNames = [];
+var currentFXShaderIndex = 0;
+var fxShader;
+var shaderNames = [];
+var currentShader = 0;
+var currentShader1 = 0;
+var currentShader2 = 0;
+var shader;
+var shader1;
+var shader2;
+var bgImage = null;
+var secondFX;
+var bgIndex = 0;
+var lookupIndex = 0;
+var lookupName = 0;
+var lookupElement;
+var lookupVal = 0.0;
+
+
 var imageURLS = [  // not used just as a reference
 "../images/NormalsMapStd.png",
 "../images/NormalMapZFull.png",
@@ -61,8 +77,9 @@ function renderer(){
         bufferSwap[1] = renderTargets.textures.test1;
         bufferToUse = 1;
     }
-    var fBTB = fullScreenRender.shaders.swirl;
-    var fBTBMouse= fBTB.mouse;
+    var fBTB = shader;
+    var fBTBMouse= shader.mouse;
+    var settings = shader.settings;
 
     var renderTarget = bufferSwap[(bufferToUse) % 2];
     var renderSource = bufferSwap[(bufferToUse + 1) % 2];
@@ -74,32 +91,79 @@ function renderer(){
     gl.enable(gl.BLEND);
 
     fullScreenRender.setRenderTarget(renderTarget);
-    fullScreenRender.prepRender(fullScreenRender.shaders.swirl);
-    fullScreenRender.setMultiTexture([renderSource.texture, testImages.textures.normals,testImages.textures.direction]);
+    fullScreenRender.prepRender(shader);
+    fullScreenRender.setMultiTexture([renderSource.texture, bgImage,testImages.textures.direction]);
     fBTBMouse.shadow[0] =(canvasMouse.globalTime/106) +  Math.sin(canvasMouse.globalTime/105600) * 100+Math.sin(canvasMouse.globalTime/14040) * 10+Math.sin(canvasMouse.globalTime/1350) * 10;///1000;
     fBTBMouse.shadow[1] = Math.sin(canvasMouse.globalTime/6325)*1.021;
     fBTBMouse.shadow[2] = Math.sin(canvasMouse.globalTime/6456)*1.021;
     fBTBMouse.set(gl);
+    if(settings !== undefined){
+        if(mouse.buttonRaw === 2){
+            lookupVal += 16;
+            if("textureSize".indexOf(lookupName) > -1){
+                settings.shadow[settings.lookups[lookupName]] = Math.pow((mouse.x / w) *160,2);;
+            }else if("rotAngleStart,rotVaryFreq,rotVaryAmount,backYMovement,backXMovement,zoomOccScale".indexOf(lookupName) > -1){
+                settings.shadow[settings.lookups[lookupName]] = (mouse.x / w) * 0.1 ;;
+                
+            }else{
+                settings.shadow[settings.lookups[lookupName]] = (mouse.x / w) *32 ;;
+            }
+            lookupElement.textContent = "Setting : " + lookupName + " = " + settings.shadow[settings.lookups[lookupName]];
+            settings.set(gl);
+        }
+    }
     scale.value = 1 + Math.sin(canvasMouse.globalTime / 1000) * 0.2 + Math.sin(canvasMouse.globalTime / 130) * 0.2;
     scale.update();
     var ss =   Math.sin(canvasMouse.globalTime/6000)*0.0021 + Math.sin(canvasMouse.globalTime/94972)*0.0021+ Math.sin(canvasMouse.globalTime/43946)*0.0006;
     var ss1 =  Math.sin(canvasMouse.globalTime/8560)*0.0021 + Math.sin(canvasMouse.globalTime/63946)*0.0021+ Math.sin(canvasMouse.globalTime/46946)*0.0004;
     fullScreenRender.drawScale(1/(1.0+ss), 1/-(1.0+ss1)); 
 
-    if(iterations > 1){
-        for(var i = 1; i < iterations; i += 2){
-            fullScreenRender.draw(0, 0, 1/(1.0-ss), 1/-(1.0-ss1)); 
-            fullScreenRender.draw(0, 0, (1.0-ss), -(1.0-ss1)); 
-        }
+    if(iterations === 2){
+        var renderTarget = bufferSwap[(bufferToUse) % 2];
+        var renderSource = bufferSwap[(bufferToUse + 1) % 2];
+        var fBTB = shader1;
+        var fBTBMouse= shader1.mouse;
+
+        bufferToUse += 1;
+        renderTargets.setTarget(renderTarget);        
+        fullScreenRender.setRenderTarget(renderTarget);
+        fullScreenRender.prepRender(shader1);
+        fullScreenRender.setMultiTexture([renderSource.texture, bgImage,testImages.textures.direction]);
+        fBTBMouse.shadow[0] =(canvasMouse.globalTime/206) +  Math.sin(canvasMouse.globalTime/55600) * 100+Math.sin(canvasMouse.globalTime/7040) * 10+Math.sin(canvasMouse.globalTime/3350) * 10;///1000;
+        fBTBMouse.shadow[1] = Math.sin(canvasMouse.globalTime/8325)*1.021;
+        fBTBMouse.shadow[2] = Math.sin(canvasMouse.globalTime/10456)*1.021;
+        fBTBMouse.set(gl);
+       // fullScreenRender.prepRender(secondFX,renderSource.texture);
+       // if(secondFX.powVal){
+        //    secondFX.powVal.set(gl);
+            
+       // }
+
+        fullScreenRender.drawScale(1/(1.0+ss), 1/-(1.0+ss1)); 
+        //fullScreenRender.drawScale(1,-1);
     }
+
 
     renderTargets.setDefaultTarget();    
     fullScreenRender.setRenderTarget(null);
-    if(useThreshold){
-        fullScreenRender.prepRender(fullScreenRender.shaders.bgThreshold,renderTarget.texture);
-    }else{
-        fullScreenRender.prepRender(fullScreenRender.shaders.backgroundImage,renderTarget.texture);
+    fullScreenRender.prepRender(fxShader,renderTarget.texture);
+    if(fxShader.powVal){
+        if(mouse.buttonRaw === 2){
+            fxShader.powVal.shadow[0] = ((mouse.x / w) * 4) + 1;
+
+        }
+        fxShader.powVal.set(gl);
     }
+    if(fxShader.lightPos){
+        if(mouse.buttonRaw === 2){
+            fxShader.lightPos.shadow[0] = mouse.x / w -0.5;
+            fxShader.lightPos.shadow[1] = mouse.y / h -0.5;
+
+        }
+        fxShader.lightPos.set(gl);
+        
+    }
+
     fullScreenRender.drawScale(1.2);
     
     var frames = Math.floor(canvasMouse.globalTime / (1000/60)) % 60;
@@ -119,32 +183,92 @@ function resizedCanvas(){
     spriteRender.canvasResized(canvasMouse.webGL);
 
 }
+var fxShaderNames = [];
+var currentFXShaderIndex = 0;
+var fxShader;
 
 // the UI controls at bottom of page
 var UIInfo = [
     {
-        name : "Threshold",
+        name : "Background",
+        title : "The final output rendering shader used.",
         func : function(){
-            useThreshold = true;
-            logs.log("FrameBuffer display Threshold");
+            currentFXShaderIndex += 1;
+            currentFXShaderIndex %= fxShaderNames.length;
+            fxShader = fullScreenRender.shaders[fxShaderNames[currentFXShaderIndex]];
+            if(fxShaderNames[currentFXShaderIndex] === "bgColourCurve"){            
+                logs.log("Middle click and drag left to right to set this shader.");
+            }
+            return fxShaderNames[currentFXShaderIndex];
         },
         
     },
     {
-        name : "32RGBA",
+        name : "Image",
+        title : "Click to change the source image. basicly changes the colours.",
         func : function(){
-            useThreshold = false;
-            logs.log("FrameBuffer display RGBA");
+            bgIndex += 1;
+            bgIndex %= testImages.names.length;
+            bgImage = testImages.textures[testImages.names[bgIndex]];
+            return testImages.names[bgIndex];
+            
+
         },
         
     },{
         name : "Single pass",
+        title : "Click to change from single pass to double pass rendering. The second pass is set by the 2nd button to the right",
         func : function(){
+            if(iterations === 1){                
+                iterations = 2;
+                secondFX = fxShader;
+                return "2 FX " + fxShaderNames[currentFXShaderIndex];
+            }
             iterations = 1;
-            logs.log("Single pass set")
+            return "1 FX pass";
         }
-    }
+    },{
+        name : "Swirl",
+        title : "Click to change 1st pass shader",
+        func : function(){
+            currentShader += 1;
+            currentShader %= shaderNames.length;
+            shader = fullScreenRender.shaders[shaderNames[currentShader]];
+            if(currentShader === 2){
+                logs.log("Swirl2 needs extra settings.");
+            }
+
+            return shaderNames[currentShader];
+        }
+    } ,{
+        name : "Swirl",
+        title : "Click to change 2nd pass shader",
+        func : function(){
+            currentShader1 += 1;
+            currentShader1 %= shaderNames.length;
+            shader1 = fullScreenRender.shaders[shaderNames[currentShader1]];
+            if(currentShader1 === 2){
+                logs.log("Swirl2 needs extra settings.");
+            }
+
+            return shaderNames[currentShader1];
+        }
+    } ,{
+        name : "Settings",
+        title : "VERY experimental and only apply to Swirl2. Click to select property then center button and drag mouse left to right to change value",
+        func : function(element){
+            if(shader.settings){
+                lookupIndex += 1;
+                lookupIndex %= shader.settings.lookupNames.length;
+                lookupName = shader.settings.lookupNames[lookupIndex];
+                lookupElement = element;
+
+                return "Setting : " + lookupName + " = " + shader.settings.shadow[shader.settings.lookups[lookupName]];
+            }
+        }
+    }    
 ];
+
 
 
 
@@ -159,7 +283,8 @@ window.addEventListener("load",function(){
     
     logs.setPosition("10px","20px","200px","300px");
     var l = logs.start({closeBox:true,clear:true});
-    logs.log("Hi there :)");    
+    logs.log("Log display.");    
+    logs.log("This page is under development.");    
     
     imageManager.loadImageSet(testImages);
     
@@ -171,8 +296,69 @@ window.addEventListener("load",function(){
     var size = 512;
     renderTargets.createTarget("test",size,size);  // creates a 512,512 texture to render to
     renderTargets.createTarget("test1",size,size);  // creates a 512,512 texture to render to
-    fullScreenRender.addShader("swirl",[{name:"textureSize",value:"8192.0"}]);
+    fullScreenRender.addShader("swirl");
+    fullScreenRender.addShader("swirl1");
+    fullScreenRender.addShader("swirl2");
+    fullScreenRender.addShader("swirl3");
     fullScreenRender.addShader("bgThreshold",[{name:"level",value:"0.95"}]);
+    fullScreenRender.addShader("bgColourStretch");
+    fullScreenRender.addShader("bgColourCurve");
+    fullScreenRender.addShader("bgColourStretchCurve");
+    fullScreenRender.addShader("bgLight");
+    fullScreenRender.addShader("bgConvolute",[{name:"type",value:"convoluteSharpen"}],"sharpen");
+    fullScreenRender.addShader("bgConvolute",[{name:"type",value:"convoluteEmbos"}],"embos");
+    fullScreenRender.addShader("bgConvolute",[{name:"type",value:"convoluteEmbosColour"}],"embosColour");
+    fullScreenRender.addShader("bgConvolute",[{name:"type",value:"convoluteEdge"}],"edge");
+    fullScreenRender.addShader("bgConvolute",[{name:"type",value:"convoluteEdgeStrong"}],"edgeStrong");
+    fullScreenRender.addShader("bgConvolute",[{name:"type",value:"convoluteEdgeColour"}],"edgeColour");
+    fullScreenRender.addShader("bgConvolute",[{name:"type",value:"convoluteBlur"}],"blur");
+    
+    fxShaderNames.push("backgroundImage");
+    fxShaderNames.push("bgThreshold");
+    fxShaderNames.push("bgColourCurve");
+    fxShaderNames.push("bgColourStretchCurve");
+    fxShaderNames.push("bgLight");
+    fxShaderNames.push("bgColourStretch");
+    fxShaderNames.push("sharpen");
+    fxShaderNames.push("embos");
+    fxShaderNames.push("embosColour");
+    fxShaderNames.push("edge");
+    fxShaderNames.push("edgeStrong");
+    fxShaderNames.push("edgeColour");
+    fxShaderNames.push("blur");
+    currentFXShaderIndex = 0;
+    fxShader = fullScreenRender.shaders[fxShaderNames[currentFXShaderIndex]];
+    
+    
+    shaderNames.push("swirl");
+    shaderNames.push("swirl1");
+    shaderNames.push("swirl2");
+    shaderNames.push("swirl3");
+    shader = fullScreenRender.shaders[shaderNames[0]];    
+    shader1 = fullScreenRender.shaders[shaderNames[1]];    
+    shader2 = fullScreenRender.shaders[shaderNames[2]];    
+    
+    
+    if(shader2.constants !== undefined){
+        logs.log("Vertex constants");    
+        shader2.constants.vertex.forEach(c => {
+            if(!isNaN(c.value)){
+                logs.nameVal(c);
+            }
+         })
+
+        logs.log("Fragment constants");    
+        shader2.constants.fragment.forEach(c => {
+            if(!isNaN(c.value)){
+                logs.nameVal(c);
+            }
+         })
+
+    }
+    
+    
+    
+    currentShader = 0;
      if(frameRate){
         frameRate.displayCallback = updateStats;
         canvasMouse.renderStack.push(frameRate.update);
@@ -183,13 +369,11 @@ window.addEventListener("load",function(){
     testImages.allLoaded = function(){
         renderTargets.putImageInBuffer(canvasMouse.webGL.gl,"test",testImages.images.map);
         renderTargets.putImageInBuffer(canvasMouse.webGL.gl,"test1",testImages.images.map);
-
-        //webGLHelper.setTextureData(canvasMouse.webGL.gl,renderTargets.textures.test.texture,testImages.images.nude,"RGBA","UNSIGNED_BYTE");
-        //webGLHelper.setTextureData(canvasMouse.webGL.gl,renderTargets.textures.test1.texture,testImages.images.nude,"RGBA","UNSIGNED_BYTE");
         ready = true;
-        logs.log("Ready");
+        bgImage = testImages.textures[bgIndex];        
+        logs.log("Image loaded and Ready");
     }
-    console.log(webGLHelper.queryExtensions(canvasMouse.webGL.gl).join(","));
+
     
     
 });

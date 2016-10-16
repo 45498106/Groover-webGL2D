@@ -2,6 +2,8 @@
 // This is only for set up and when time does not matter. 
 
 
+
+
 var webGLHelper = (function(){
     /* ***************************************************************************************************
     The following functions are helpers for Shader variables. Rather than having to type all the mumbo
@@ -20,9 +22,6 @@ var webGLHelper = (function(){
     const VAR_LOCATE_FUNC = {attribute : "getAttribLocation", uniform : "getUniformLocation"};
     const SHADER_TYPE_NAMES = ["vertex","fragment"];
     function isKeyWord(word){ return VAR_KEYWORDS.indexOf(word) > -1;}
-    
-   
-    
     
     // Gl types constants and more
     var GLVersion = 2;
@@ -133,13 +132,6 @@ var webGLHelper = (function(){
         throw new ReferenceError("webGLHelper." + caller + " requires a valid image type");
     }
         
-        
-
-    
-
-    
-
-
     var currentLinkerWorkingOn;
     var glWarnings = [];
     var glErrors = [];
@@ -165,59 +157,105 @@ var webGLHelper = (function(){
         return items;
     }
     function includeLibrary(script,type){
-        script = script.replace(new RegExp("#include.+;","g"), str => {
-            
-            var lib = str.replace(/  /g," ").split(" ")[1].split(";")[0];
-            if(library[lib] === undefined){
-                throw new SyntaxError("CreateProgram could not find the include library '"+lib+"'");
-            }
+        var passCount = 0;
+        var changes = false;
+        while(passCount < 16 && (passCount < 1 || changes === true)){ // Limit pass count incase there is a cyclic link
+            changes = false;
+            passCount += 1;
+            script = script.replace(new RegExp("#include.+;","g"), str => {
+                
+                var lib = str.replace(/  /g," ").split(" ")[1].split(";")[0];
+                if(lib[0] !== "$"){ // ignore links if prefixed with the define symbol
+                    if(library[lib] === undefined){
+                        throw new SyntaxError(API.getCurrentCompileStatus() + " CreateProgram could not find the include library '"+lib+"'");
+                    }
+                    changes = true;
 
-            if(type === "vertex"){
-                if(library[lib].vertexSource !== undefined){
-                    return library[lib].vertexSource;
+                    if(type === "vertex"){
+                        if(library[lib].vertexSource !== undefined){
+                            return library[lib].vertexSource;
+                        }
+                        if(library[lib].source !== undefined){
+                            return library[lib].source;
+                        }
+                    }
+                    if(type === "fragment"){
+                        if(library[lib].fragSource !== undefined){
+                            return library[lib].fragSource;
+                        }
+                        if(library[lib].source !== undefined){
+                            return library[lib].source;
+                        }
+                    }
+                    return "";
                 }
-                if(library[lib].source !== undefined){
-                    return library[lib].source;
-                }
-            }
-            if(type === "fragment"){
-                if(library[lib].fragSource !== undefined){
-                    return library[lib].fragSource;
-                }
-                if(library[lib].source !== undefined){
-                    return library[lib].source;
-                }
-            }
-            return "";
-        });
-
+                return str;
+            });
+        }
+        if(passCount === 16){
+            throw new SyntaxError(API.getCurrentCompileStatus() + " Pre compile linker failed due to too many link passes. Check source for cyclic linking.");
+        }    
         return script;
         
     }
-    function setConstants(script,consts = []){
+    function evaluateConstant(constSource){
+        var func = "try { return (" + constSource + "); } catch(e) { return \"Failed\";}";
+        var result = (new Function(func))();
+        console.log(constSource + " eval to : " + result);
+        
+    }
+    function setConstants(script,type,consts = [],options){
         var foundC = [];
-        script = script.replace(new RegExp("#\\$.+;","g"), str => {
-            console.log(str);
-            var con = str.substr(2,str.length-3).replace(/ /g,"").split("=");
-            foundC.push({name : con[0], value : con[1]});
-
-            return "";
-        });
-        foundC.forEach(fc => {
-            consts.forEach(c => {
-                if(fc.name === c.name){
-                    fc.value = c.value;
+        var changed = false;
+        var passes = 0;
+        var source = script.source;
+        var constReplace = (c) => {
+            var reg = new RegExp("\\$"+c.name+"(\\W)","g");
+            if(reg.test(source)){
+                changed = true;
+                source = source.replace(reg,c.value+"$1");
+            }
+        }        
+        while(passes < 16 && (passes < 1 || changed === true)){
+            changed = false;
+            passes += 1;
+            source = includeLibrary(source,type)
+            source = source.replace(new RegExp("#\\$.+?;","g"), str => {
+                var con = str.substr(2,str.length-3).replace(/ /g,"").split("=");
+                var constName = con.shift();
+                if(con.length === 0){
+                    console.warn(str);
+                    throw new SyntaxError(API.getCurrentCompileStatus() + " Defined $"+constName+" miss-formed. Missing value.");
                 }
+                con = con.join("=");
+                //console.log(con)
+                var cc = foundC.find(c=>name===constName);
+                if(cc === undefined){
+                    foundC.push({name : constName, value : con});
+                }else{
+                    cc.value = con;
+                }
+                //evaluateConstant(con);
+
+                return "";
             });
-        });
-        consts.forEach(c => {
-            script = script.replace(new RegExp("\\$"+c.name+"(\\W)","g"),c.value+"$1");
-
-        });
-        foundC.forEach(c => {
-            script = script.replace(new RegExp("\\$"+c.name+"(\\W)","g"),c.value+"$1");
-
-        });
+            foundC.forEach(fc => {
+                consts.forEach(c => {
+                    if(fc.name === c.name){
+                        fc.value = c.value;
+                    }
+                });
+            });
+            consts.forEach(constReplace);
+            foundC.forEach(constReplace);
+        }
+        if(passes === 16){
+            throw new SyntaxError(API.getCurrentCompileStatus() + " Pre compile definer failed due to too many passes. Check source for cyclic define.");            
+        }
+        if(options !== undefined && options.listConstants === true){
+            script.constants = foundC;
+        }
+        script.preCompile = source;
         return script;
     }
     function getVariables(script,variables){    // get # delimited variables from shader source
@@ -230,7 +268,8 @@ var webGLHelper = (function(){
                 if(data[0] === "#name"){
                     name = data[1].replace(";","").trim();
                     if(isKeyWord(name)){
-                        throw new SyntaxError(currentLinkerWorkingOn+" : Protected keyword. '"+name+"' is a keyword and can not be used to name a shader.");
+                        console.warn(str);                        
+                        throw new SyntaxError(API.getCurrentCompileStatus() + " : Protected keyword. '"+name+"' is a keyword and can not be used to name a shader.");
                     }
                     return "";
                 }else if(data[0] === "#shadow"){
@@ -240,23 +279,34 @@ var webGLHelper = (function(){
                     var size = 1;
                     var type = null;
                     var func = "uniform"
+                    var arrayItems = null;
+                    var isArray = false;
                     if(data[3].indexOf("[") > -1){
-                        arrayItemCount = Number(data[3].split("[")[1].split("[")[0].trim());
-                        if(isNaN(arrayItemCount)){
-                            throw new SyntaxError(currentLinkerWorkingOn+" : Shadow variable'"+name+"' Array length is not a number");
+                        arrayItems = data[3].split("[")[1].split("]")[0].trim();
+                        if(!isNaN(arrayItems)){
+                            arrayItemCount = Number(arrayItems);
+                            arrayItems = null;
+                        }else{
+                            arrayItems = str.split("[")[1].split("]")[0].split(",");
+                            arrayItemCount = arrayItems.length;
+                            name = data[3].split("[")[0];
                         }
+                        isArray = true;
                     }
                     if(data[2].indexOf("vec") > -1){
                         size = Number(data[2].substr(3));
-                        if(isNaN(arrayItemCount)){
-                            throw new SyntaxError(currentLinkerWorkingOn+" : Shadow variable'"+name+"' vec size  is not a number");
+                        if(isNaN(size)){
+                            console.warn(str);
+                            
+                            throw new SyntaxError(API.getCurrentCompileStatus() + " : Shadow variable'"+name+"' vec size  is not a number");
                         }
                         type = "float";
                     }
                     if(data[2].indexOf("ivec") > -1){
                         size = Number(data[2].substr(4));
-                        if(isNaN(arrayItemCount)){
-                            throw new SyntaxError(currentLinkerWorkingOn+" : Shadow variable'"+name+"' ivec size  is not a number");
+                        if(isNaN(size)){
+                            console.warn(str);
+                            throw new SyntaxError(API.getCurrentCompileStatus() + " : Shadow variable'"+name+"' ivec size  is not a number");
                         }
                         type = "int";
                     }                    
@@ -268,7 +318,8 @@ var webGLHelper = (function(){
                     }
                     
                     if(type === null){
-                        throw new SyntaxError(currentLinkerWorkingOn+" : Shader directive #shadow '"+name+"' unknown type '"+data[2]+"'");                        
+                        console.warn(str);
+                        throw new SyntaxError(API.getCurrentCompileStatus() + " : Shader directive #shadow '"+name+"' unknown type '"+data[2]+"'");                        
                     }
                     if(type === "float"){
                          shadow = new Float32Array(size * arrayItemCount);
@@ -280,23 +331,44 @@ var webGLHelper = (function(){
                     }                   
                     
                     if(shadow === null){
-                        throw new SyntaxError(currentLinkerWorkingOn+" : Shader directive #shadow '"+name+"' type '"+ data[2]+"' not supported");
+                        console.warn(str);
+                        throw new SyntaxError(API.getCurrentCompileStatus() + " : Shader directive #shadow '"+name+"' type '"+ data[2]+"' not supported");
                     }
                     var funcStr = `
                         return function(gl){
                             gl.${func}(this.location,this.shadow);
                         }
                     `;
+                    if(arrayItems !== null){
+                        var lookup = {};
+                        var lookupNames = [];
+                        arrayItems.forEach((nameVal,i) => {
+                            var name = nameVal.trim().split("=")[0].trim();
+                            var value = nameVal.trim().split("=")[1].trim();
+                            lookup[name] = i * size;
+                            shadow[i * size] = Number(value);
+                            lookupNames.push(name);
+                        });
+                    }
 
-                    items.push({use : data[1] ,shadow : shadow,func : funcStr, type : data[2] , name : name});
-                    return str.substr(7);  // remove shadow token
+                    items.push({use : data[1] ,shadow : shadow,func : funcStr, type : data[2] , name : name, lookups : lookup,lookupNames : lookupNames});
+                    if(isArray){
+                        return data[1] + " " + data[2] + " " + name + "["+ arrayItemCount + "];"; //str.substr(7);  // remove shadow token
+                        
+                    }else{
+                        return data[1] + " " + data[2] + " " + name + ";"; //str.substr(7);  // remove shadow token
+                    }
+                }
+                if(data[2] === undefined){
+                    console.warn(str);
+                    throw new SyntaxError(API.getCurrentCompileStatus() + " Directive #"+f+ " missing variable name.");
                 }
                 items.push({use : f , type : data[1] , name : data[2].replace(/\[[0-9]+?\]|;/g,"")});
                 return str.substr(1);
             })
         })
         if(name === null && items.length > 0){
-            throw new SyntaxError(currentLinkerWorkingOn+" : Found "+items.length+" variables in unnamed shader. missing (#name shaderName) directive ")
+            throw new SyntaxError(API.getCurrentCompileStatus() + " : Found "+items.length+" variables in unnamed shader. missing (#name shaderName) directive ")
         }
         if(variables.linkNames === undefined){
             variables.linkNames = [];
@@ -323,6 +395,10 @@ var webGLHelper = (function(){
                     vars[v.name].set = (new Function("owner",v.func))(vars);
                     vars[v.name].shadow = v.shadow;
                     vars[v.name].location = location;
+                    if(v.lookups !== undefined){
+                        vars[v.name].lookups = v.lookups;
+                        vars[v.name].lookupNames = v.lookupNames;
+                    }
                     
                 }else{
                     vars[v.name] = gl[VAR_LOCATE_FUNC[v.use]](shaders.program, v.name); 
@@ -338,7 +414,6 @@ var webGLHelper = (function(){
         str.forEach(l => {
             if(l.substr(0,5) === "ERROR"){
                 glErrors.push({message : l,type : type,name : name});
-                console.log(l);
                 var line;
                 if(source !== undefined){
                     var lines = source.split("\n");
@@ -346,11 +421,13 @@ var webGLHelper = (function(){
                     line = "Line "+line+" >> " + lines[line-1];
                 }
                 if(typeof log === "function"){
+                    console.log(source);
                     log(l.replace("ERROR:","Error in: "+shader+" Shader " + name + " "));
                     if(!isNaN(line) ){
                         log(line);
                     }
                 }else{
+                    console.log(source);
                     console.error(l.replace("ERROR:","Error in: "+shader+" Shader " + name + " "));
                     if(!isNaN(line)){
                         console.log(line);
@@ -565,7 +642,12 @@ var webGLHelper = (function(){
             gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
             return buffer;
         },
-        addShader : function(shaderName,source){
+        addShader : function(shaderName,source,source1){  // source1 is the source if source is used as options
+            var options;
+            if(typeof source1 === "string"){  // check is the first source is options
+                options = source;
+                source = source1;
+            }
             var types = getSourceDirectives(source,"type");
             source = types.source;
             if(types.list.length === 0){
@@ -581,6 +663,9 @@ var webGLHelper = (function(){
             }
             if(programSource[shaderName] === undefined){
                 programSource[shaderName] = {};
+            }
+            if(options !== undefined){
+                this.setShaderOptions(shaderName,options);
             }
             programSource[shaderName][type] = {
                 source : source,
@@ -635,7 +720,17 @@ var webGLHelper = (function(){
             }
             return false;
         },
-        setShaderOption : function(shaderName,options){
+        setShaderOption : function(shaderName,optionName,value){
+            var ps;
+            if((ps = programSource[shaderName]) === undefined){
+                ps = programSource[shaderName] = {};
+            }
+            if(ps.options === undefined){
+                ps.options = {};
+            }            
+            ps.options[optionName] = value;
+        },
+        setShaderOptions : function(shaderName,options){
             var ps;
             if((ps = programSource[shaderName]) === undefined){
                 ps = programSource[shaderName] = {};
@@ -647,6 +742,16 @@ var webGLHelper = (function(){
                 ps.options[i] = options[i];
             }
         },
+        getCurrentCompileStatus : function(){
+            if(this.currentProgram === null){
+                return "No program is currently being compiled.";
+            }
+            var str = "Build/Compile : '"+this.currentProgram+"'";
+            if(this.currentShader !== null){
+                str += " shader : "+this.currentShader+"'";
+            }
+            return str;
+        },
         createProgram : function (gl, pname, consts) {// creates vertex and fragment shaders
             gl = vetGL(gl,"createProgram");            
             var shaders = [];
@@ -655,24 +760,28 @@ var webGLHelper = (function(){
             if(s === undefined){
                 throw new RangeError("  Can not create program. No program named '"+pname+"' found.");
             }
+            this.currentProgram = pname;
             SHADER_TYPE_NAMES.forEach(n=>{
                 var script = s[n];
+                this.currentShader = n;
                 if (script !== undefined) {
                     currentLinkerWorkingOn = script;
                     var shader = gl.createShader(gl[script.type]);
-                    var source = includeLibrary(script.source,n);  // link in libs
-                    source = setConstants(source, consts);   // set constants
-                    source = getVariables(source, variables);  // get variables
-                    if(s.options !== undefined && s.options.showPreCompile){
+                    //var source = includeLibrary(script.source,n);  // link in libs
+                    setConstants(script, n, consts,s.options);   // set constants
+                    var source = getVariables(script.preCompile, variables);  // get variables
+                    if(s.options !== undefined && s.options.showPreCompile === true){
                         console.log("Showing pre compiled "+n+" source for "+pname);
                         console.log(source);
                     }
                     gl.shaderSource(shader, source);
                     gl.compileShader(shader);
+                    console.log(shader)
                     if(report(gl,pname,shader,"shader", n, source)){throw new ReferenceError("WEBGL Shader error : Program : '"+pname+"' shader : " + n); }
                     shaders.push(shader);
                 }
             });
+            this.currentShader = null;
             var program = gl.createProgram();
             shaders.forEach((shader) => {  gl.attachShader(program, shader); });
             gl.linkProgram(program);
@@ -680,6 +789,7 @@ var webGLHelper = (function(){
             var vars = getLocations(gl,{ program : program,variables : variables});
             if(report(gl,pname,program,"program",pname)){throw new ReferenceError("WEBGL Program error : " + pname);}
             vars.program = program;
+            
             vars.name = name;
             vars.id = id ++;
             if(s.utilNames !== undefined){
@@ -687,6 +797,15 @@ var webGLHelper = (function(){
                     vars[f] = s.utilities[f];
                 });
             }
+            if(s.options !== undefined && s.options.listConstants === true){
+                vars.constants = {};
+                SHADER_TYPE_NAMES.forEach(n=>{
+                    var script = s[n];
+                    vars.constants[n] = script.constants;
+                    
+                });
+            }
+            this.currentProgram = null;
             return vars;
         },
     };

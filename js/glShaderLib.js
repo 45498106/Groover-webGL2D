@@ -76,3 +76,31 @@
             #$tex = tex;
             `
 );}
+
+{webGLHelper.addLib("screenScaleFull",`
+#Vertex
+            #include simplePosTexture;
+            #include screenScale;
+            void main() {
+                gl_Position = $pos * vec4($scale.x,-($screen.y / $screen.x) * $scale.y,1.0,1.0);
+                tex = $coords;
+            }
+
+#Fragment            
+            precision mediump float;
+            #include screenScale;
+            #include textures1;            
+            `
+);}
+
+{webGLHelper.addLib("beckmannSpecular",`
+#Vertex
+#Fragment            
+        float beckSpecular( vec3 lightDir, vec3 viewDir, vec3 surfaceNormal, float roughness) {
+          float nDotH = max(dot(surfaceNormal, normalize(lightDir + viewDir)), 0.0001);          
+          nDotH *= nDotH;
+          float r = roughness * roughness;
+          return exp(((nDotH - 1.0) / nDotH) / r) / (3.141592653589793 * r * nDotH * nDotH);
+        }
+        `
+);}

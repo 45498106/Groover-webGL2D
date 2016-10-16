@@ -2,7 +2,10 @@
 function UIClicked(event){
     event.stopPropagation();
     if(typeof this.dataDetails.func === "function"){
-        this.dataDetails.func();
+        var newText = this.dataDetails.func(this);
+        if(newText !== undefined){
+            this.textContent = newText;
+        }
     }
     updateStats();     
 }
@@ -14,6 +17,9 @@ function createUI(){
     UIInfo.forEach(s=>{
         var span = document.createElement("span");
         span.textContent = s.name;
+        if(s.title){
+            span.title = s.title;
+        }
         span.dataDetails = s;
         span.className = "btn overFX Light";
         span.addEventListener("click",UIClicked);
