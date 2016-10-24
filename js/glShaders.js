@@ -697,18 +697,27 @@
                     gl_FragColor = texture2D(texture, tiles) * vec4(1.0 , 1.0 , 1.0 , alpha);
                }
             }`);}
-{webGLHelper.addShader("batchSprite",`
-            #$batchCount = 640;   // pre compile settable constant default
-            #$spriteCount = 21;   // pre compile settable constant default
+{webGLHelper.addShader("batchSprite",{listConstants : true,showPreCompile:true},`
             #type vertex;      
             #name batchSprite;
             #attribute vec4 position;
             #attribute vec2 texcoord;
-            // 0 pos, 1 scale, 2 textPos, 3 textScale, 4 (rotation,screenAspect), 5 (alpha,scale), 6 center, 7 tile
-            #uniform vec2 desc[8];   
-            #uniform float pos[$batchCount];  // preCompile default value. Must have a default
-
-            #uniform ivec4 loc[$spriteCount]; // preCompile default value. Must have a default
+            #shadow uniform float description[alpha = 1.0, aspect = 1.0, scale = 1.0, textScaleX = 1.0, textScaleY = 1.0];
+            #$alpha = description[0];  // global alpha value
+            #$aspect = description[1]; // screen aspect used to square pixels
+            #$gScale = description[2]; // global scale. 
+            #$tScaleX = description[3]; // texture image scaling x,y
+            #$tScaleY = description[4]; // texture image scaling x,y
+            #$tScale = vec2($tScaleX, $tScaleY);
+            #$batchCount = 640;   // default number of sprites per batch * 5 See uniform pos for details
+            #uniform float pos[$batchCount];  // this contains the list of sprites. x,y,scale,rot,index
+                                              // x and y position of sprite center. Y + down and x,y normalised to screen size
+                                              // scale is pixel size in normalise screen coords
+                                              // rotation in radians 0 points right. Clockwise +
+                                              // index. The Used to find sprite location in loc array
+            #$spriteCount = 21;               // number of sprites on the sprite sheet texture
+            #uniform ivec4 loc[$spriteCount]; // List of sprite locations on sprite sheet.
+                                              // x,y,w,h the x,y top left and w,h width height in normalised image coordinates 0-1
             const vec2 topLeft = vec2(-0.5,-0.5);
             const vec2 topRight = vec2(0.5,-0.5);
             const vec2 bottomRight = vec2(0.5,0.5);
@@ -717,9 +726,9 @@
             varying float alpha;
             void main() {
                vec2 vt; 
-               int  p = int(floor(position.y)); // vertex position 0 = top left around 1,2, 3= to bottom left
-               int ind = int(floor(position.x)) * 5; // sprite screen position index
-               int spriteLoc = int(pos[ind + 4]); // sprite sheet position index
+               int  p = int(floor(position.y));         // vertex position 0 = top left around 1,2, 3= to bottom left
+               int ind = int(floor(position.x)) * 5;    // sprite screen position index
+               int spriteLoc = int(pos[ind + 4]);       // sprite sheet position index
                vec2 tex = vec2(float(loc[spriteLoc].x),float(loc[spriteLoc].y));
                if (p == 0) {
                    vt = topLeft;
@@ -734,13 +743,12 @@
                    vt = bottomLeft;
                    tex.y += float(loc[spriteLoc].w);
                }
-               alpha = desc[5].x;
-               v_texcoord = tex / desc[7];  // texture scaling             
-    
-               vec2 posV = vt  * pos[ind + 2] * 2.0 * desc[5].y;      
-               vec2 rot = vec2(cos(pos[ind + 3]),sin(pos[ind + 3]));
+               alpha = $alpha;              // set varying alpha
+               v_texcoord = tex / $tScale;  // texture scaling            
+               vec2 posV = vt  * pos[ind + 2] * 2.0 * $gScale;      
+               vec2 rot = vec2(cos(pos[ind + 3]), sin(pos[ind + 3]));
                vt.x = posV.x * rot.x + posV.y * rot.y  + (pos[ind] - 0.5) * 2.0;
-               vt.y = posV.x * (-rot.y * desc[4].y)  + posV.y * rot.x * desc[4].y + (pos[ind + 1] + 0.5) * 2.0;               
+               vt.y = posV.x * (-rot.y * $aspect)  + posV.y * rot.x * $aspect + (pos[ind + 1] + 0.5) * 2.0;               
                gl_Position  = vec4(vt, position.zw);
 
                
@@ -1091,7 +1099,6 @@
 #Vertex
 #Fragment           
 
-            #shadow uniform float settings[textureSize=10000.0, atrractLen=10.4, attractorScale=3.1,attractorLenScale =4.1,lenOccilatorScale=1.1,attractOcc1= 4.0,attractOcc2=2.0,mixR = 1.0,mixG = 2.0,mixB=13.0,lenSinScale= 0.13,lenSinOffset= 1.13,rotAngleStart=0.00015,rotVaryFreq=0.0001,rotVaryAmount=0.002,rotVaryColfeedback = 2.0,rotVaryColfeedbackAmount = 0.9,directionScale = 5.0,directionScale1 = 5.0,attractOccScale1 = 0.5,attractOccScale2 = 0.5,backYMovement = 0.0005,backXMovement = 0.001,zoomOcc1 = 10.0,zoomOccScale = 0.0001]; 
             
             #$textureSize = settings[0]; // abstract texture size
             #$atrractLen = settings[1]; // dist between attracting colours
@@ -1129,6 +1136,9 @@
             #$backXMovement = settings[22];
             #$zoomOcc1 = settings[23];
             #$zoomOccScale = settings[24];
+            
+            #shadow uniform float settings[textureSize=10000.0, atrractLen=10.4, attractorScale=3.1,attractorLenScale =4.1,lenOccilatorScale=1.1,attractOcc1= 4.0,attractOcc2=2.0,mixR = 1.0,mixG = 2.0,mixB=13.0,lenSinScale= 0.13,lenSinOffset= 1.13,rotAngleStart=0.00015,rotVaryFreq=0.0001,rotVaryAmount=0.002,rotVaryColfeedback = 2.0,rotVaryColfeedbackAmount = 0.9,directionScale = 5.0,directionScale1 = 5.0,attractOccScale1 = 0.5,attractOccScale2 = 0.5,backYMovement = 0.0005,backXMovement = 0.001,zoomOcc1 = 10.0,zoomOccScale = 0.0001]; 
+            
 
             `
 );}

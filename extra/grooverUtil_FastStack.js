@@ -93,8 +93,8 @@ if (Array.prototype.fastStack === undefined) {
             count = 0;
             while( i < len ) {
                 r = this[i];
-                r.x += r.dx;
-                r.y += r.dy;
+                r.x += r.dx + w;
+                r.y += r.dy + h;
                 r.r += r.dr;
                 r.x %= w;
                 r.y %= h;

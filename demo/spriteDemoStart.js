@@ -66,9 +66,6 @@ function addRock(){
     r.s = ROCK_SCALE_MIN[rockId] + (Math.random() -0.5) * 0.1;    
     r.dead = false;
 }
-function updateAndDisplayRocks(){
-    rocks.fEachCustom(); 
-}
 
 // Dont really need  these to be chasers but leaving them in for now
 const ACCELERATION = 0.8;
@@ -90,7 +87,7 @@ function renderer(){
     // if the sprites have loaded and the batch sprite shader rockShader is ready then draw the sprites.
     if(gameSprites.ready && rockShader !== null){
         spriteRender.prepRender(rockShader, gameSprites);    
-        updateAndDisplayRocks();
+        rocks.fEachCustom(); 
         spriteRender.flush();
     }    
 }

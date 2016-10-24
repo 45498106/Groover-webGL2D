@@ -135,8 +135,13 @@ var spriteRender = (function(){
                   //  spriteLocations= sprite.locations;
                     //spriteUniform[12] = sprite.sprites.length ;
                 //}
-                spriteUniform[14] = sw;
-                spriteUniform[15] = sh;    
+                if(cs.description){
+                    cs.description.shadow[cs.description.lookups.textScaleX] = sw;
+                    cs.description.shadow[cs.description.lookups.textScaleY] = sh;
+                }else{
+                    spriteUniform[14] = sw;
+                    spriteUniform[15] = sh;    
+                }
             }
             if(cs.prep !== undefined){
                 cs.prep();
@@ -144,7 +149,12 @@ var spriteRender = (function(){
                 setBuffer(textureBuffer, cs.texcoord, textureQuad);
                 setBuffer(positionBuffer, cs.position, positionQuad);                         
             }
-            spriteUniform[9] = w/h;
+            if(cs.description){
+                cs.description.shadow[cs.description.lookups.aspect] = w/h;
+                
+            }else{                
+                spriteUniform[9] = w/h; // this is to be depreciated
+            }
             tileUniform[4] = 1;
             tileUniform[5] = 1;
         },
@@ -168,7 +178,12 @@ var spriteRender = (function(){
         },
         flush : function(){
             if(batched > 0){
-                gl.uniform2fv(cs.desc, spriteUniform);
+                if(cs.description){
+                    cs.description.set(gl);
+                }else{
+                    gl.uniform2fv(cs.desc, spriteUniform);
+                }
+
                 gl.uniform1fv(cs.pos, batch);
                 gl.drawArrays(gl.TRIANGLES, 0, (batched / 5 )*6);
                 batched = 0;
@@ -178,12 +193,17 @@ var spriteRender = (function(){
             var su = spriteUniform;
             var s = spr[index];
             if(batched === 0){
-                su[4] = s[4];
-                su[5] = s[5];
-                su[6] = s[6];
-                su[7] = s[7];
-                su[10] = alpha;
-                su[11] = 1;              
+                if(cs.description){
+                    cs.description.shadow[cs.description.lookups.alpha] = alpha;
+                    cs.description.shadow[cs.description.lookups.scale] = 1;
+                }else{
+                    su[4] = s[4];
+                    su[5] = s[5];
+                    su[6] = s[6];
+                    su[7] = s[7];
+                    su[10] = alpha;
+                    su[11] = 1;              
+                }
             }
             batch[batched++] = x / w;
             batch[batched++] = y / -h;
@@ -191,7 +211,11 @@ var spriteRender = (function(){
             batch[batched++] = rot;      
             batch[batched++] = index;      
             if(batched === batchSize * 5){
-                gl.uniform2fv(cs.desc, su);
+                if(cs.description){
+                    cs.description.set(gl);
+                }else{                
+                    gl.uniform2fv(cs.desc, su);
+                }
                 gl.uniform1fv(cs.pos, batch);
                 gl.drawArrays(gl.TRIANGLES, 0, batchSize*6);
                 batched = 0;

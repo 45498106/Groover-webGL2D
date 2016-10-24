@@ -776,7 +776,6 @@ var webGLHelper = (function(){
                     }
                     gl.shaderSource(shader, source);
                     gl.compileShader(shader);
-                    console.log(shader)
                     if(report(gl,pname,shader,"shader", n, source)){throw new ReferenceError("WEBGL Shader error : Program : '"+pname+"' shader : " + n); }
                     shaders.push(shader);
                 }

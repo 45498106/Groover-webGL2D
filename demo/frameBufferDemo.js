@@ -54,6 +54,8 @@ var bufferToUse = 0;
 var waitForIt = 0;
 var useThreshold = false;
 var iterations = 1;
+var localTime;
+var useLocalTime = false;
 
 function renderer(){  
     if(!ready){
@@ -92,30 +94,34 @@ function renderer(){
 
     fullScreenRender.setRenderTarget(renderTarget);
     fullScreenRender.prepRender(shader);
+    if(useLocalTime){
+    }else{
+        localTime = canvasMouse.globalTime;
+    }
     fullScreenRender.setMultiTexture([renderSource.texture, bgImage,testImages.textures.direction]);
-    fBTBMouse.shadow[0] =(canvasMouse.globalTime/106) +  Math.sin(canvasMouse.globalTime/105600) * 100+Math.sin(canvasMouse.globalTime/14040) * 10+Math.sin(canvasMouse.globalTime/1350) * 10;///1000;
-    fBTBMouse.shadow[1] = Math.sin(canvasMouse.globalTime/6325)*1.021;
-    fBTBMouse.shadow[2] = Math.sin(canvasMouse.globalTime/6456)*1.021;
+    fBTBMouse.shadow[0] =(localTime/106) +  Math.sin(localTime/105600) * 100+Math.sin(localTime/14040) * 10+Math.sin(localTime/1350) * 10;///1000;
+    fBTBMouse.shadow[1] = Math.sin(localTime/6325)*1.021;
+    fBTBMouse.shadow[2] = Math.sin(localTime/6456)*1.021;
     fBTBMouse.set(gl);
     if(settings !== undefined){
         if(mouse.buttonRaw === 2){
             lookupVal += 16;
             if("textureSize".indexOf(lookupName) > -1){
                 settings.shadow[settings.lookups[lookupName]] = Math.pow((mouse.x / w) *160,2);;
-            }else if("rotAngleStart,rotVaryFreq,rotVaryAmount,backYMovement,backXMovement,zoomOccScale".indexOf(lookupName) > -1){
-                settings.shadow[settings.lookups[lookupName]] = (mouse.x / w) * 0.1 ;;
+            }else if("oomOccScale".indexOf(lookupName) > -1){
+                settings.shadow[settings.lookups[lookupName]] = ((mouse.x / w)-0.5) * 0.1 + (mouse.y / h) * (0.1 / h);
                 
             }else{
-                settings.shadow[settings.lookups[lookupName]] = (mouse.x / w) *32 ;;
+                settings.shadow[settings.lookups[lookupName]] = ((mouse.x / w)-0.5) *128 + (mouse.y / h) * (128 / h) ;;
             }
             lookupElement.textContent = "Setting : " + lookupName + " = " + settings.shadow[settings.lookups[lookupName]];
             settings.set(gl);
         }
     }
-    scale.value = 1 + Math.sin(canvasMouse.globalTime / 1000) * 0.2 + Math.sin(canvasMouse.globalTime / 130) * 0.2;
+    scale.value = 1 + Math.sin(localTime / 1000) * 0.2 + Math.sin(localTime / 130) * 0.2;
     scale.update();
-    var ss =   Math.sin(canvasMouse.globalTime/6000)*0.0021 + Math.sin(canvasMouse.globalTime/94972)*0.0021+ Math.sin(canvasMouse.globalTime/43946)*0.0006;
-    var ss1 =  Math.sin(canvasMouse.globalTime/8560)*0.0021 + Math.sin(canvasMouse.globalTime/63946)*0.0021+ Math.sin(canvasMouse.globalTime/46946)*0.0004;
+    var ss =   Math.sin(localTime/6000)*0.0021 + Math.sin(localTime/94972)*0.0021+ Math.sin(localTime/43946)*0.0006;
+    var ss1 =  Math.sin(localTime/8560)*0.0021 + Math.sin(localTime/63946)*0.0021+ Math.sin(localTime/46946)*0.0004;
     fullScreenRender.drawScale(1/(1.0+ss), 1/-(1.0+ss1)); 
 
     if(iterations === 2){
@@ -129,9 +135,9 @@ function renderer(){
         fullScreenRender.setRenderTarget(renderTarget);
         fullScreenRender.prepRender(shader1);
         fullScreenRender.setMultiTexture([renderSource.texture, bgImage,testImages.textures.direction]);
-        fBTBMouse.shadow[0] =(canvasMouse.globalTime/206) +  Math.sin(canvasMouse.globalTime/55600) * 100+Math.sin(canvasMouse.globalTime/7040) * 10+Math.sin(canvasMouse.globalTime/3350) * 10;///1000;
-        fBTBMouse.shadow[1] = Math.sin(canvasMouse.globalTime/8325)*1.021;
-        fBTBMouse.shadow[2] = Math.sin(canvasMouse.globalTime/10456)*1.021;
+        fBTBMouse.shadow[0] =(localTime/206) +  Math.sin(localTime/55600) * 100+Math.sin(localTime/7040) * 10+Math.sin(localTime/3350) * 10;///1000;
+        fBTBMouse.shadow[1] = Math.sin(localTime/8325)*1.021;
+        fBTBMouse.shadow[2] = Math.sin(localTime/10456)*1.021;
         fBTBMouse.set(gl);
        // fullScreenRender.prepRender(secondFX,renderSource.texture);
        // if(secondFX.powVal){
@@ -265,6 +271,16 @@ var UIInfo = [
 
                 return "Setting : " + lookupName + " = " + shader.settings.shadow[shader.settings.lookups[lookupName]];
             }
+        }
+    },{
+        name : "Vary On",
+        title : "If on render setting are slowly varied over time, if off they are fixed to the moment you click this button.",
+        func : function(element){
+            useLocalTime = !useLocalTime;
+            if(useLocalTime){
+                return "Vary Off";
+            }
+            return "Vary On.";
         }
     }    
 ];
