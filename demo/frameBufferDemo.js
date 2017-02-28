@@ -77,14 +77,16 @@ function renderer(){
         firstRender = false;
         bufferSwap[0] = renderTargets.textures.test;
         bufferSwap[1] = renderTargets.textures.test1;
+        bufferSwap[2] = renderTargets.textures.test2;
         bufferToUse = 1;
     }
     var fBTB = shader;
     var fBTBMouse= shader.mouse;
     var settings = shader.settings;
+    var buffCount = Math.max(iterations,2);
 
-    var renderTarget = bufferSwap[(bufferToUse) % 2];
-    var renderSource = bufferSwap[(bufferToUse + 1) % 2];
+    var renderTarget = bufferSwap[(bufferToUse) % buffCount];
+    var renderSource = bufferSwap[(bufferToUse + 1) % buffCount];
 
     bufferToUse += 1;
     renderTargets.setTarget(renderTarget);
@@ -124,9 +126,9 @@ function renderer(){
     var ss1 =  Math.sin(localTime/8560)*0.0021 + Math.sin(localTime/63946)*0.0021+ Math.sin(localTime/46946)*0.0004;
     fullScreenRender.drawScale(1/(1.0+ss), 1/-(1.0+ss1)); 
 
-    if(iterations === 2){
-        var renderTarget = bufferSwap[(bufferToUse) % 2];
-        var renderSource = bufferSwap[(bufferToUse + 1) % 2];
+    if(iterations >= 2){
+        var renderTarget = bufferSwap[(bufferToUse) % buffCount];
+        var renderSource = bufferSwap[(bufferToUse + (buffCount-1)) % buffCount];
         var fBTB = shader1;
         var fBTBMouse= shader1.mouse;
 
@@ -134,19 +136,29 @@ function renderer(){
         renderTargets.setTarget(renderTarget);        
         fullScreenRender.setRenderTarget(renderTarget);
         fullScreenRender.prepRender(shader1);
-        fullScreenRender.setMultiTexture([renderSource.texture, bgImage,testImages.textures.direction]);
+        fullScreenRender.setMultiTexture([renderSource.texture, renderSource.texture,testImages.textures.direction]);
         fBTBMouse.shadow[0] =(localTime/206) +  Math.sin(localTime/55600) * 100+Math.sin(localTime/7040) * 10+Math.sin(localTime/3350) * 10;///1000;
         fBTBMouse.shadow[1] = Math.sin(localTime/8325)*1.021;
         fBTBMouse.shadow[2] = Math.sin(localTime/10456)*1.021;
         fBTBMouse.set(gl);
-       // fullScreenRender.prepRender(secondFX,renderSource.texture);
-       // if(secondFX.powVal){
-        //    secondFX.powVal.set(gl);
-            
-       // }
-
         fullScreenRender.drawScale(1/(1.0+ss), 1/-(1.0+ss1)); 
-        //fullScreenRender.drawScale(1,-1);
+    }
+    if(iterations === 3){
+        var renderTarget = bufferSwap[(bufferToUse) % buffCount];
+        var renderSource = bufferSwap[(bufferToUse + 2) % buffCount];
+        var fBTB = shader2;
+        var fBTBMouse= shader1.mouse;
+
+        //bufferToUse += 1;
+        renderTargets.setTarget(renderTarget);        
+        fullScreenRender.setRenderTarget(renderTarget);
+        fullScreenRender.prepRender(shader2);
+        fullScreenRender.setMultiTexture([renderSource.texture, renderSource.texture,testImages.textures.direction]);
+        fBTBMouse.shadow[0] =(localTime/107) +  Math.sin(localTime/25600) * 100+Math.sin(localTime/4040) * 10+Math.sin(localTime/2350) * 10;///1000;
+        fBTBMouse.shadow[1] = Math.sin(localTime/8325)*1.021;
+        fBTBMouse.shadow[2] = Math.sin(localTime/10456)*1.021;
+        fBTBMouse.set(gl);
+        fullScreenRender.drawScale(1/(1.0+ss), 1/-(1.0-ss1)); 
     }
 
 
@@ -221,7 +233,8 @@ var UIInfo = [
 
         },
         
-    },{
+    },
+    {
         name : "Single pass",
         title : "Click to change from single pass to double pass rendering. The second pass is set by the 2nd button to the right",
         func : function(){
@@ -230,10 +243,16 @@ var UIInfo = [
                 secondFX = fxShader;
                 return "2 FX " + fxShaderNames[currentFXShaderIndex];
             }
+            if(iterations === 2){                
+                iterations = 3;
+                secondFX = fxShader;
+                return "3 FX " + fxShaderNames[currentFXShaderIndex];
+            }
             iterations = 1;
             return "1 FX pass";
         }
-    },{
+    },
+    {
         name : "Swirl",
         title : "Click to change 1st pass shader",
         func : function(){
@@ -246,7 +265,8 @@ var UIInfo = [
 
             return shaderNames[currentShader];
         }
-    } ,{
+    } ,
+    {
         name : "Swirl",
         title : "Click to change 2nd pass shader",
         func : function(){
@@ -259,7 +279,22 @@ var UIInfo = [
 
             return shaderNames[currentShader1];
         }
-    } ,{
+    } ,
+    {
+        name : "Swirl",
+        title : "Click to change 3rd pass shader",
+        func : function(){
+            currentShader2 += 1;
+            currentShader2 %= shaderNames.length;
+            shader2 = fullScreenRender.shaders[shaderNames[currentShader1]];
+            if(currentShader2 === 2){
+                logs.log("Swirl2 needs extra settings.");
+            }
+
+            return shaderNames[currentShader2];
+        }
+    } ,
+    {
         name : "Settings",
         title : "VERY experimental and only apply to Swirl2. Click to select property then center button and drag mouse left to right to change value",
         func : function(element){
@@ -272,7 +307,8 @@ var UIInfo = [
                 return "Setting : " + lookupName + " = " + shader.settings.shadow[shader.settings.lookups[lookupName]];
             }
         }
-    },{
+    },
+    {
         name : "Vary On",
         title : "If on render setting are slowly varied over time, if off they are fixed to the moment you click this button.",
         func : function(element){
@@ -312,6 +348,7 @@ window.addEventListener("load",function(){
     var size = 512;
     renderTargets.createTarget("test",size,size);  // creates a 512,512 texture to render to
     renderTargets.createTarget("test1",size,size);  // creates a 512,512 texture to render to
+    renderTargets.createTarget("test2",size,size);  // creates a 512,512 texture to render to
     fullScreenRender.addShader("swirl");
     fullScreenRender.addShader("swirl1");
     fullScreenRender.addShader("swirl2");
@@ -385,6 +422,7 @@ window.addEventListener("load",function(){
     testImages.allLoaded = function(){
         renderTargets.putImageInBuffer(canvasMouse.webGL.gl,"test",testImages.images.map);
         renderTargets.putImageInBuffer(canvasMouse.webGL.gl,"test1",testImages.images.map);
+        renderTargets.putImageInBuffer(canvasMouse.webGL.gl,"test2",testImages.images.map);
         ready = true;
         bgImage = testImages.textures[bgIndex];        
         logs.log("Image loaded and Ready");

@@ -1512,7 +1512,6 @@
             }`);
 }
 
-
 /*{webGLHelper.addShader("colourCube",`
 
         attribute vec4 position;
